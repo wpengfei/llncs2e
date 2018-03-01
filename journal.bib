@@ -1,0 +1,502 @@
+@article{modern,
+  title={Automated Detection, Exploitation, and Elimination of Double-Fetch Bugs using Modern CPU Features},
+  author={Schwarz, Michael and Gruss, Daniel and Lipp, Moritz and Maurice, Clémentine and Schuster, Thomas and Fogh, Anders and Mangard, Stefan},
+  year={2017},
+}
+
+@inproceedings{wang,
+  title={How Double-Fetch Situations turn into Double-Fetch Vulnerabilities: A Study of Double Fetches in the Linux Kernel},
+  author={Wang, P. and Krinke, J. and Lu, K. and Li, G. and Dodier-Lazaro, S.},
+  booktitle={Usenix Security Symposium},
+  year={2017},
+}
+
+@Misc{precise,
+  howpublished = {\url{http://www-users.cs.umn.edu/~kjlu/papers/deadline.pdf}},
+  title = {Precise and Scalable Detection of Double-Fetch Bugs in OS Kernels},
+  author = {Xu, Meng and Qian, Chenxiong and Lu, Kangjie and Michael, Backes and Taesoo, Kim}
+
+} 
+
+@Misc{bochspwn,
+  howpublished = {\url{https://media.blackhat.com/us-13/us-13-Jurczyk-Bochspwn-Identifying-0-days.pdf}},
+  title = {Bochspwn: Identifying 0-days via system-wide memory access pattern analysis},
+  author = {Mateusz Jurczyk and Gynvael Coldwind}
+
+} 
+
+
+@Misc{xenpwn,
+  howpublished = {\url{https://www.blackhat.com/docs/us-16/materials/us-16-Wilhelm-Xenpwn-Breaking-Paravirtualized-Devices.pdf}},
+  title = {Xenpwn – Breaking Paravirtualized Devices},
+  author = {Felix Wilhelm}
+
+} 
+
+@inproceedings{lu2008learning,
+  title={Learning from mistakes: a comprehensive study on real world concurrency bug characteristics},
+  author={Lu, Shan and Park, Soyeon and Seo, Eunsoo and Zhou, Yuanyuan},
+  booktitle = {Proceedings of the 13th International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS)},
+  OPTseries = {ASPLOS XIII},
+  OPTvolume={43},
+  OPTnumber={3},
+  OPTpages={329--339},
+  year={2008},
+  OPTorganization={ACM}
+}
+@inproceedings{chou2001empirical,
+  title={An empirical study of operating systems errors},
+  author={Chou, Andy and Yang, Junfeng and Chelf, Benjamin and Hallem, Seth and Engler, Dawson},
+  booktitle = {Proceedings of the Eighteenth ACM Symposium on Operating Systems Principles (SOSP)},
+  OPTseries = {SOSP '01},
+  OPTvolume={35},
+  OPTnumber={5},
+  year={2001},
+  OPTpublisher={ACM}
+}
+@article{swift2003improving,
+ author = {Swift, Michael M. and Bershad, Brian N. and Levy, Henry M.},
+ title = {Improving the Reliability of Commodity Operating Systems},
+ journal = {ACM Trans. Comput. Syst.},
+ volume = {23},
+ number = {1},
+ month = feb,
+ year = {2005},
+ OPTpages = {77--110},
+ OPTnumpages = {34},
+ OPTurl = {http://doi.acm.org/10.1145/1047915.1047919},
+ OPTdoi = {10.1145/1047915.1047919},
+ OPTacmid = {1047919},
+ OPTpublisher = {ACM},
+ OPTaddress = {New York, NY, USA},
+ OPTkeywords = {I/O, Recovery, device drivers, protection, virtual memory},
+} 
+
+@inproceedings{ryzhyk2009dingo,
+  title={Dingo: Taming device drivers},
+  author={Ryzhyk, Leonid and Chubb, Peter and Kuz, Ihor and Heiser, Gernot},
+  booktitle={Proceedings of the 4th ACM European conference on Computer systems},
+  OPTpages={275--288},
+  year={2009},
+  OPTorganization={ACM}
+}
+@inproceedings{deligiannis2015fast,
+  title={Fast and Precise Symbolic Analysis of Concurrency Bugs in Device Drivers (T)},
+  author={Deligiannis, Pantazis and Donaldson, Alastair F and Rakamaric, Zvonimir},
+  booktitle={Automated Software Engineering (ASE), 2015 30th IEEE/ACM International Conference on},
+  OPTpages={166--177},
+  year={2015},
+  OPTorganization={IEEE}
+}
+@Misc{XenXSA155,
+  howpublished = {\url{https://www.insinuator.net/2015/12/xen-xsa-155-double-fetches-in-paravirtualized-devices/}},
+  title = {Xen XSA 155: Double fetches in paravirtualized devices},
+  author = {Felix Wilhelm}
+} 
+@inproceedings{yang2012concurrency,
+  title={Concurrency Attacks},
+  author={Yang, Junfeng and Cui, Ang and Stolfo, Sal and Sethumadhavan, Simha},
+  booktitle = {Proceedings of the 4th USENIX Conference on Hot Topics in Parallelism},
+  OPTseries = {HotPar'12},
+  OPTpublisher = {USENIX Association},
+  year={2012}
+}
+@inproceedings{watson2007exploiting,
+  title={Exploiting Concurrency Vulnerabilities in System Call Wrappers},
+  author={Watson, Robert NM},
+  booktitle={First USENIX Workshop on Offensive Technologies (WOOT)},
+  OPTseries={WOOT '07},
+  year={2007}
+}
+@Misc{ms08061,
+  howpublished = {\url{https://blogs.technet.microsoft.com/srd/2008/10/14/ms08-061-the-case-of-the-kernel-mode-double-fetch/}},
+  title = {{MS08-061:} The case of the kernel mode double-fetch},
+  author = {Fermin J. Serna},
+  year={2008}
+}
+@inproceedings{cai2009exploiting,
+  title={Exploiting Unix File-System Races via Algorithmic Complexity Attacks},
+  author={Cai, Xiang and Gui, Yuwei and Johnson, Rob},
+  booktitle={30th IEEE Symposium on Security and Privacy},
+  OPTpages={27--41},
+  year={2009},
+  OPTorganization={IEEE}
+}
+@inproceedings{payer2012protecting,
+  title={Protecting applications against {TOCTTOU} races by user-space caching of file metadata},
+  author={Payer, Mathias and Gross, Thomas R},
+  booktitle = {Proceedings of the 8th ACM SIGPLAN/SIGOPS Conference on Virtual Execution Environments},
+  OPTseries = {VEE '12},
+  OPTvolume={47},
+  OPTnumber={7},
+  OPTpages={215--226},
+  year={2012},
+  OPTorganization={ACM}
+}
+@inproceedings{lawall2010finding,
+  title={Finding error handling bugs in {OpenSSL} using {Coccinelle}},
+  author={Lawall, Julia and Laurie, Ben and Hansen, Ren{\'e} Rydhof and Palix, Nicolas and Muller, Gilles},
+  booktitle={European Dependable Computing Conference (EDCC)},
+  OPTpages={191--196},
+  year={2010},
+  OPTorganization={IEEE}
+}
+@book{corbet2005linux,
+  title={Linux Device Drivers},
+  author={Corbet, Jonathan and Rubini, Alessandro and Kroah-Hartman, Greg},
+  year={2005},
+  publisher={O'Reilly Media, Inc.}
+}
+@TechReport{jurczyk2013identifying,
+  author = 	 {Mateusz Jurczyk and Gynvael Coldwind},
+  title = 	 {Identifying and exploiting windows kernel race conditions via memory access patterns},
+  institution =  {Google Research},
+  year = 	 {2013},
+  OPTkey = 	 {},
+  OPTtype = 	 {},
+  OPTnumber = 	 {},
+  OPTaddress = 	 {},
+  OPTmonth = 	 {},
+  note =	 {\url{http://research.google.com/pubs/archive/42189.pdf}},
+  OPTannote = 	 {}
+}
+@inproceedings{brunel2009foundation,
+  title = {A Foundation for Flow-based Program Matching: Using Temporal Logic and Model Checking},
+  booktitle = {Proceedings of the 36th Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL)},
+  OPTseries = {POPL '09},
+  author={Brunel, Julien and Doligez, Damien and Hansen, Ren{\'e} Rydhof and Lawall, Julia L and Muller, Gilles},
+  year={2009},
+  OPTpublisher={ACM}
+}
+@inproceedings{fonseca2014ski,
+  title={{SKI}: exposing kernel concurrency bugs through systematic schedule exploration},
+  author={Fonseca, Pedro and Rodrigues, Rodrigo and Brandenburg, Bj{\"o}rn B},
+  booktitle={11th USENIX Symposium on Operating Systems Design and Implementation (OSDI 14)},
+  OPTpages={415--431},
+  year={2014}
+}
+@article{palix2014faults,
+  title={Faults in {Linux} 2.6},
+  author={Palix, Nicolas and Thomas, Ga{\=e}l and Saha, Suman and Calves, Christophe and Muller, Gilles and Lawall, Julia},
+  journal={ACM Transactions on Computer Systems (TOCS)},
+  volume={32},
+  number={2},
+  OPTpages={4},
+  year={2014},
+  OPTpublisher={ACM}
+}
+@inproceedings{palix2011faults,
+  author={Palix, Nicolas and Thomas, Ga{\"e}l and Saha, Suman and Calv{\`e}s, Christophe and Lawall, Julia and Muller, Gilles},
+  title = {Faults in {Linux}: Ten Years Later},
+  booktitle = {Proceedings of the Sixteenth International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS)},
+  OPTseries = {ASPLOS XVI},
+  year = {2011},
+  OPTorganization={ACM}
+}
+@MastersThesis{wilhelm15tracing,
+  author = 	 {Felix Wilhelm},
+  title = 	 {Tracing Privileged Memory Accesses to Discover Software Vulnerabilities},
+  school = 	 {Karlsruher Institut f{\"u}r Technologie},
+  year = 	 {2015},
+  OPTkey = 	 {},
+  OPTtype = 	 {},
+  OPTaddress = 	 {},
+  OPTmonth = 	 {},
+  OPTnote = 	 {},
+  OPTannote = 	 {}
+}
+
+@inproceedings{chen2002mops,
+  title={{MOPS}: an infrastructure for examining security properties of software},
+  author={Chen, Hao and Wagner, David},
+  booktitle={Proceedings of the 9th ACM conference on Computer and communications security},
+  OPTpages={235--244},
+  year={2002},
+  OPTorganization={ACM}
+}
+@article{bishop1996checking,
+  title={Checking for race conditions in file accesses},
+  author={Bishop, Matt and Dilger, Michael and others},
+  journal={Computing systems},
+  volume={2},
+  number={2},
+  OPTpages={131--152},
+  year={1996}
+}
+@inproceedings{cowan2001raceguard,
+  title={{RaceGuard}: Kernel Protection From Temporary File Race Vulnerabilities.},
+  author={Cowan, Crispin and Beattie, Steve and Wright, Chris and Kroah-Hartman, Greg},
+  booktitle={USENIX Security Symposium},
+  OPTpages={165--176},
+  year={2001}
+}
+@article{lhee2005detection,
+  title={Detection of file-based race conditions},
+  author={Lhee, Kyung-Suk and Chapin, Steve J},
+  journal={International Journal of Information Security},
+  volume={4},
+  number={1-2},
+  OPTpages={105--119},
+  year={2005},
+  OPTpublisher={Springer}
+}
+@article{pratikakis2011locksmith,
+  title={{LOCKSMITH}: Practical static race detection for {C}},
+  author={Pratikakis, Polyvios and Foster, Jeffrey S and Hicks, Michael},
+  journal={ACM Transactions on Programming Languages and Systems (TOPLAS)},
+  volume={33},
+  number={1},
+  OPTpages={3},
+  year={2011},
+  OPTpublisher={ACM}
+}
+@inproceedings{huang2011persuasive,
+  title={Persuasive prediction of concurrency access anomalies},
+  author={Huang, Jeff and Zhang, Charles},
+  booktitle={Proceedings of the 2011 International Symposium on Software Testing and Analysis},
+  OPTpages={144--154},
+  year={2011},
+  OPTorganization={ACM}
+}
+@inproceedings{chen2008towards,
+  title={Towards a better collaboration of static and dynamic analyses for testing concurrent programs},
+  author={Chen, Jun and MacDonald, Steve},
+  booktitle={Proceedings of the 6th workshop on Parallel and distributed systems: testing, analysis, and debugging},
+  OPTpages={8},
+  year={2008},
+  OPTorganization={ACM}
+}
+@inproceedings{engler2003racerx,
+  title={{RacerX}: effective, static detection of race conditions and deadlocks},
+  author={Engler, Dawson and Ashcraft, Ken},
+  booktitle={ACM SIGOPS Operating Systems Review},
+  volume={37},
+  number={5},
+  OPTpages={237--252},
+  year={2003},
+  OPTorganization={ACM}
+}
+@article{sen2008race,
+  title={Race directed random testing of concurrent programs},
+  author={Sen, Koushik},
+  journal={ACM SIGPLAN Notices},
+  volume={43},
+  number={6},
+  OPTpages={11--21},
+  year={2008},
+  OPTpublisher={ACM}
+}
+@inproceedings{kasikci2013racemob,
+  title={{RaceMob}: crowdsourced data race detection},
+  author={Kasikci, Baris and Zamfir, Cristian and Candea, George},
+  booktitle={Proceedings of the twenty-fourth ACM symposium on operating systems principles},
+  OPTpages={406--422},
+  year={2013},
+  OPTorganization={ACM}
+}
+
+@inproceedings{kasikci2012data,
+  title={Data races vs. data race bugs: telling the difference with portend},
+  author={Kasikci, Baris and Zamfir, Cristian and Candea, George},
+  booktitle = {Proceedings of the Seventeenth International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS)},
+  OPTpages={185--198},
+  year={2012},
+  OPTpublisher={ACM}
+}
+@inproceedings{zhang2010conmem,
+  title={{ConMem}: detecting severe concurrency bugs through an effect-oriented approach},
+  author={Zhang, Wei and Sun, Chong and Lu, Shan},
+  booktitle={ACM SIGARCH Computer Architecture News},
+  volume={38},
+  number={1},
+  OPTpages={179--192},
+  year={2010},
+  OPTorganization={ACM}
+}
+@inproceedings{lu2015racechecker,
+  title={{RaceChecker}: efficient identification of harmful data races},
+  author={Lu, Kai and Wu, Zhendong and Wang, Xiaoping and Chen, Chen and Zhou, Xu},
+  booktitle={2015 23rd Euromicro International Conference on Parallel, Distributed, and Network-Based Processing},
+  OPTpages={78--85},
+  year={2015},
+  OPTorganization={IEEE}
+}
+@article{wu2015collaborative,
+  title={Collaborative technique for concurrency bug detection},
+  author={Wu, Zhendong and Lu, Kai and Wang, Xiaoping and Zhou, Xu},
+  journal={International Journal of Parallel Programming},
+  volume={43},
+  number={2},
+  OPTpages={260--285},
+  year={2015},
+  OPTpublisher={Springer}
+}
+@inproceedings{voung2007relay,
+  title={{RELAY}: static race detection on millions of lines of code},
+  author={Voung, Jan Wen and Jhala, Ranjit and Lerner, Sorin},
+  booktitle={Proceedings of the the 6th joint meeting of the European software engineering conference and the ACM SIGSOFT symposium on The foundations of software engineering},
+  OPTpages={205--214},
+  year={2007},
+  OPTorganization={ACM}
+}
+@online{hammou2016exploiting,
+  author={Hammou, Souhail},
+  title={Exploiting {Windows} Drivers: Double-fetch Race Condition Vulnerability},
+  year={2016},
+  url={http://resources.infosecinstitute.com/exploiting-windows-drivers-double-fetch-race-condition-vulnerability/}
+}
+@article{leveson1993investigation,
+  title={An investigation of the Therac-25 accidents},
+  author={Leveson, Nancy G and Turner, Clark S},
+  journal={Computer},
+  volume={26},
+  number={7},
+  OPTpages={18--41},
+  year={1993},
+  OPTpublisher={IEEE}
+}
+@online{NAblackout,
+  author = {Anick Jesdanun},
+  title = {General Electric acknowledges Northeastern blackout bug},
+  year = {2004},
+  url = {http://www.securityfocus.com/news/8032}
+} 
+@online{nasdaqdelay,
+  author = {Xinhua Net},
+  title = {Nasdaq CEO Blames Software Design for Delayed Facebook Trading},
+  year = {2012},
+  url = {http://www.cs.com.cn/english/com/201205/t20120521\_3337908.html}
+} 
+@online{dfmacro,
+  author = {Paul E. McKenney},
+  title = {list: Fix double fetch of pointer in hlist\_entry\_safe()},
+  year = {2013},
+  url = {https://lists.linuxfoundation.org/pipermail/containers/2013-March/031996.html}
+} 
+@online{dfcompat,
+  OPTauthor = {Red Hat Bugzilla},
+  title = {Bug 166248 -- {CAN-2005-2490} sendmsg compat stack overflow},
+  OPTyear = {2005},
+  url = {https://bugzilla.redhat.com/show_bug.cgi?id=166248}
+} 
+@inproceedings{lu2006avio,
+  title={{AVIO}: detecting atomicity violations via access interleaving invariants},
+  author={Lu, Shan and Tucek, Joseph and Qin, Feng and Zhou, Yuanyuan},
+  booktitle={ACM SIGARCH Computer Architecture News},
+  volume={34},
+  number={5},
+  OPTpages={37--48},
+  year={2006},
+  OPTorganization={ACM}
+}
+
+@article{Wang2017A,
+  title={A survey of the double‐fetch vulnerabilities},
+  author={Wang, Pengfei and Lu, Kai and Li, Gen and Zhou, Xu},
+  journal={Concurrency Computation Practice Experience},
+  number={8},
+  pages={e4345},
+  year={2017},
+}
+
+@article{Chung2009ASeD,
+  title={ASeD: Availability, Security, and Debugging Support using Transactional Memory ABSTRACT},
+  author={Chung, Jaewoong and Baek, Woongki and Bronson, Nathan Grasso and Seo, Jiwon and Kozyrakis, Christos and Olukotun, Kunle},
+  year={2009},
+}
+
+@inproceedings{Guan2015Protecting,
+  title={Protecting Private Keys against Memory Disclosure Attacks Using Hardware Transactional Memory},
+  author={Guan, Le and Lin, Jingqiang and Luo, Bo and Jing, Jiwu and Wang, Jing},
+  booktitle={IEEE Symposium on Security and Privacy},
+  pages={3-19},
+  year={2015},
+}
+
+
+@article{ShabbirEnforcing,
+  title={Enforcing Security Policies using HTM},
+  author={Shabbir, Mudassir},
+}
+
+@inproceedings{Jang2016Breaking,
+  title={Breaking Kernel Address Space Layout Randomization with Intel TSX},
+  author={Jang, Yeongjin and Lee, Sangho and Kim, Taesoo},
+  booktitle={ACM Sigsac Conference on Computer and Communications Security},
+  pages={380-392},
+  year={2016},
+}
+
+@article{Haas2014Enhancing,
+  title={Enhancing Real-Time Behaviour of Parallel Applications using Intel TSX},
+  author={Haas, Florian and Metzlaff, Stefan},
+  journal={Entomological Science},
+  volume={11},
+  number={1},
+  pages={123–126},
+  year={2014},
+}
+
+@inproceedings{Yoo2014Performance,
+  title={Performance evaluation of Intel® Transactional Synchronization Extensions for high-performance computing},
+  author={Yoo, Richard M. and Hughes, Christopher J. and Lai, Konrad and Rajwar, Ravi},
+  booktitle={High PERFORMANCE Computing, Networking, Storage and Analysis},
+  pages={1-11},
+  year={2014},
+}
+
+@inproceedings{Karnagel2014Improving,
+  title={Improving in-memory database index performance with Intel® Transactional Synchronization Extensions},
+  author={Karnagel, Tomas and Dementiev, Roman and Rajwar, Ravi and Lai, Konrad and Legler, Thomas and Schlegel, Benjamin and Lehner, Wolfgang},
+  booktitle={IEEE  International Symposium on High PERFORMANCE Computer Architecture},
+  pages={476-487},
+  year={2014},
+}
+
+@inproceedings{Goel2014Performance,
+  title={Performance and Energy Analysis of the Restricted Transactional Memory Implementation on Haswell},
+  author={Goel, Bhavishya and Titos-Gil, Ruben and Negi, Anurag and Mckee, Sally A. and Stenstrom, Per},
+  booktitle={Parallel and Distributed Processing Symposium, 2014 IEEE  International},
+  pages={615-624},
+  year={2014},
+}
+
+@article{Harris2010Transactional,
+  title={Transactional Memory, 2nd Edition},
+  author={Harris, T and Larus, J and Rajwar, R},
+  journal={Synthesis Lectures on Computer Architecture},
+  volume={5},
+  number={1},
+  pages={263},
+  year={2010},
+}
+
+@inproceedings{Herlihy1993Transactional,
+  title={Transactional memory: architectural support for lock-free data structures},
+  author={Herlihy, Maurice and Moss, J. Eliot B},
+  pages={289-300},
+  year={1993},
+}
+
+@inproceedings{Hammond2004Transactional,
+  title={Transactional memory coherence and consistency},
+  author={Hammond, L. and Wong, V. and Chen, M. and Carlstrom, B. D.},
+  booktitle={International Symposium on Computer Architecture, 2004. Proceedings},
+  pages={102-113},
+  year={2004},
+}
+
+@article{Stuart2008Hunting,
+  title={Hunting bugs with Coccinelle},
+  author={Stuart, Henrik},
+  journal={Masters Thesis},
+  year={2008},
+}
+
+@inproceedings{Jones2007The,
+  title={The Semantics of "Semantic Patches" in Coccinelle},
+  author={Jones, Neil D and Hansen, Rene Rydhof},
+  booktitle={Asian Symposium on Programming Languages and Systems},
+  pages={303-318},
+  year={2007},
+}

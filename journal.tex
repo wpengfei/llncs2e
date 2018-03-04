@@ -13,6 +13,7 @@
 \usepackage{textcomp}
 \usepackage{algorithmicx}
 \usepackage{listings}
+\usepackage{makecell}
 \lstset{language=C,
   basicstyle=\ttfamily,
   columns=fullflexible,
@@ -302,7 +303,7 @@ The last rule is about loop operations. As mentioned above, Coccinelle engine is
 However, these rules are not strong enough to cover all double-fetch bugs. Such as function \verb:copy_dev_ioctl(): in file \verb:/fs/autofs4/dev-ioctl.c:, as shown in Fig.\ref{dev-ioctl}. In this double-fetch bug, the first fetch happens at line 100 with a transfer function \verb:copy_from_user(): and the second fetch happens at line 109 with a normal function \verb:memdup_user():. They both copy the data from the same user address pointed by the pointer \verb:in: to the kernel space. However, function \verb:memdup_user: is not one of the four transfer functions Wang \textit{et al.} used, so it won't be detected by Wang \textit{et al.}'s method. But in fact, function \verb:memdup_user: indeed contains a transfer function \verb:copy_from_user(): and some other operations, it can be regarded as a transfer function completely in this case.
 
 The rules improved are as follows:
-\textbf{Add more transfer functions.}
+
 
 \begin{table}[t!]
 \caption{Expanded Transfer Functions}
@@ -331,7 +332,7 @@ The rules improved are as follows:
 \label{transfer-func}
 \end{table}
 
-Wang \textit{et al.} used only four transfer functions in his experiment, \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():. However, there are also many normal functions containing transfer functions, and their targets are transferring data from user space to kernel space as well, such as \verb:memdup_user(): mentioned above. In addition to funcions, there are also many macros playing the same role in the kernel, like \verb:__copy_from_user_inatomic():.
+\textbf{Add more transfer functions.}Wang \textit{et al.} used only four transfer functions in his experiment, \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():. However, there are also many normal functions containing transfer functions, and their targets are transferring data from user space to kernel space as well, such as \verb:memdup_user(): mentioned above. In addition to funcions, there are also many macros playing the same role in the kernel, like \verb:__copy_from_user_inatomic():.
 In the double-fetch bugs detection scenario, these normal functions and macros can be regarded as transfer functions directly. 
 
 Table~\ref{transfer-func} shows the 15 functions (and macros) used in double-fetch bugs detection and their types and parameters. Except for functions used, there are still many functions in kernel meet the condition that transferring data from user space to kernel space, however, many of them have not been used in the code. So these functions are abandoned and lifted efficiency.
@@ -368,7 +369,7 @@ Rules which Wang \textit{et al.} proposed are theoretically correct. However, in
 
 
 \textbf{Remove more non-double-fetch bugs.}
-Wang \textit{et al.} used his pattern rules find 90 candidates files in total, it's still a little heavy for technicians to check manually. To lower false positive rate, more situations are added to remove those non-double-fetch bugs.
+Wang \textit{et al.} used his pattern rules find 90 candidates files in total, it's still a little heavy for technicians to check manually. To lower false positive rate, more situations are added to remove those non-double-fetch bugs:
 
 %\drivers\isdn\i4l\isdn_ppp.c
 \textbf{1. The procedure returns after the first fetch.}
@@ -406,7 +407,15 @@ As shown in Fig.\ref{return}, there are two fetches at line 850 and 879, and the
 
 %\drivers\isdn\hysdn\hysdn_procconf.c
 \textbf{2. Two fetches are in the different branches}
-Another situation is when the two fetches are in the different branches, just like a \verb:SWITCH: statement. For instance, function \verb:hysdn_conf_write: in file \verb:\drivers\isdn\hysdn\hysdn_procconf.c: is matched with double-fetch bugs detection. But its two fetches are located in different branches, the first fetch is in the \verb:IF: statement with condition \verb:cnf->state == CONF_STATE_DETECT: and the second fetch is in the \verb:IF: statement with condition \verb:cnf->state == CONF_STATE_POF:. These two conditions can never be satisfied at the same time, so this situation is also a non-double-fetch bug situation.
+Another situation is when the two fetches are in the different branches, just like a \verb:SWITCH: statement. For instance, function \verb:hysdn_conf_write: in \verb:\drivers\isdn\hysdn\hysdn_procconf.c: is matched with double-fetch bugs detection. But its two fetches are located in different branches, the first fetch is in the \verb:IF: statement with condition \texttt{cnf->state == CONF\_STATE\_DETECT} and the second fetch is in the \verb:IF: statement with condition \verb:cnf->state == CONF_STATE_POF:. These two conditions can never be satisfied at the same time, so this situation is also a non-double-fetch bug situation.
+
+Besides, based on the improvement mentioned above, we summed up the other two types of double-fetch bugs. They are as follows:
+
+\textbf{1. Validity Checking.}
+Validity checking is the situation when the header of a message is fetched to verify the validity of the message. Different from size checking and type selection, this header is only used in the validity verifying, whereas in other cases, the header will be used in memory allocation or \verb:SWITCH: statements.
+
+\textbf{2. Reacquisition.}
+Another type is Reacquisition. In this scenario, there is no obvious relation between the two fetches. It simply fetches the data from the same user address twice.
 
 
 \subsection{Automated Patching with Intel TSX}
@@ -422,7 +431,7 @@ Another situation is when the two fetches are in the different branches, just li
 \State
 \Procedure{lock}{~}
   \State retries $\gets$ 0
-  \State \_xbegin(~) \Comment{speculative path} \label{line:xbegin}
+  \State \_xbegin(~) \label{line:xbegin}
   \If {lock\_is\_free(lock)}
   \State \textbf{return}
   \Else 
@@ -432,7 +441,7 @@ Another situation is when the two fetches are in the different branches, just li
   \If {retries $<$ MAX\_RETRIES}
   \State goto line 9
   \Else
-  \State mutex.lock(~) \Comment{fallback path}
+  \State mutex.lock(~) a
   \EndIf
 \EndProcedure
 \State
@@ -479,15 +488,16 @@ more thorough and powerful fallback path could be established through scanning t
 
 \begin{table}[t]
   \centering
-  \caption{Results of Detection of Double-Fetch bugs}
-  \begin{tabular}{cccc}
+  \caption{Statistical Results of Detection of Double-Fetch Bugs}
+  \begin{tabular}{cccccccc}
     \hline
-    Kernel & Version & Files & Cases \\   
+    Kernel & Version & Files & \makecell{Size \\ Checking} & \makecell{Type \\ Selection} & \makecell{Validity \\ Checking} & Reacquisition & \makecell{Total \\ Bugs}\\    
     \hline
-    Linux & 4.14.10 & 45614 & 24 \\
-    FreeBSD & 11.1 & 38811 & 13 \\
-    OpenBSD & 6.2 & 29704 & 0 \\
-    Android & 8.1.0 (3.18) & 30479 & 0 \\
+    Linux & 4.14.10 & 45614 & 13 & 5 & 4 & 2 & 24 \\
+    FreeBSD & 11.1 & 38811 & 7 & 2 & 2 & 1 & 12 \\
+    OpenBSD & 6.2 & 29704 & 0 & 0 & 0 & 0 & 0 \\
+    Android & 7.0.0 (3.18) & 30479 & 14 & 7 & 5 & 15 & 41 \\
+    Darwin & 10.13.3 & 49105 & 3 & 1 & 0 & 0 & 4 \\
     \hline
     \label{stat}
   \end{tabular}
@@ -500,7 +510,7 @@ more thorough and powerful fallback path could be established through scanning t
 \label{imple}
 DFTinker was implemented on a Linux laptop running Ubuntu 16.04 x64, with one Intel i7-7700HQ 2.6GHz processor, 8GB of memory, 250GB SSD. The Coccinelle version was 1.0.4 with Python support.
 
-The experiment used Linux 4.14.10, OpenBSD 6.2, FreeBSD 11.1, and Android 8.1.0, which were the newest version when the experiment was conducted. To prove that DFTinker can find out bugs reported by prior works, the experiment was also conducted on Linux 4.5, the same version Wang \textit{et al.} used to experiment on.
+The experiment used Linux 4.14.10, OpenBSD 6.2, FreeBSD 11.1, Android 7.0.0 and Darwin 10.13.3, which were the relatively newer version when the experiment was conducted. To prove that DFTinker can find out bugs reported by prior works, the experiment was also conducted on Linux 4.5, the same version Wang \textit{et al.} used to experiment on.
 
 To evaluate the efficiency of the fixed operating system, another Ubuntu 14.04 x64 was implemented, whose function \verb:ioctl_file_dedupe_range(): in file \texttt{/fs/ioctl.c} was fixed by DFTinker. This operating system ran on a server with a 4-core Intel Core i7-6700 CPU (clocked at 3.40GHz, supporting RTM) with each core possessing a private 32KB L1 cache and a private 256KB L2 cache and a shared 8MB L3 cache. The memory was 32GB and the storage was a 250GB SSD.
 
@@ -513,64 +523,144 @@ This section will discuss DFTinker's ability to detect double fetches and the pe
 
 At first, DFTinker was run to confirm Wang \textit{et al.}'s work~\cite{wang} with the Linux kernel 4.5, the same version Wang \textit{et al.} used to experiment. It successfully reached Wang \textit{et al.}'s result. All five bugs reported in Linux kernel 4.5 were found (CVE-2016-5728, CVE-2016-6130, CVE-2016-6136, CVE-2016-6156, CVE-2016-6480), which proved that DFTinker is as good as Wang \textit{et al.}'s work.
 
-Then it was applied to four open source kernels: Linux 4.14.10, FreeBSD 11.1, OpenBSD 6.2, Android 8.1.0 (kernel version 3.18). These were the newest version when the experiment was conducted. The result is shown as Table~\ref{stat}.
 
-\textbf{1. Linux.} The Linux kernel used is version 4.14.10 which was released on Dec 29, 2017. In this version, five double-fetch bugs reported by Wang \textit{et al.} had already been fixed, but it still found 24 cases in total. The details are shown in Table~\ref{result}.
+Then it was applied to five open source kernels: Linux 4.14.10, FreeBSD 11.1, OpenBSD 6.2, Android 7.0.0 (kernel version 3.18) and Darwin 10.13.3. These were the relatively newer version when the experiment was conducted. The statistical result is shown as Table~\ref{stat}.
 
+\textbf{1. Linux.} The Linux kernel used is version 4.14.10 which was released on Dec 29, 2017. In this version, five double-fetch bugs reported by Wang \textit{et al.} had already been fixed, but it still found 24 cases in total. Parts
+\footnote{Due to the limitation of the page, the full results of the double-fetch bugs detection are available at https://github.com/luoyyqq}​ of the results are shown in Table~\ref{result}.
 
 \begin{table*}[htb!]
   \centering
-  \caption{Results of Detection of Linux 4.14.10 and FreeBSD 11.1}
-  \begin{tabular}{ccccc}
+  \caption{Part of the Results of Double-fetch Bugs}
+  \begin{tabular}{cccccc}
     \hline
-    No. & File & Function & First Fetch & Second Fetch  \\   
+    No. & File & Function & the First Fetch & the Second Fetch & Type  \\  
     \hline
-    1 & bus.c & \_\_nd\_ioctl() & 942 & 1025 \\
-    2 & commctrl.c & ioctl\_send\_fib() & 82 & 119 \\
-    3 & compat.c & cmsghdr\_from\_user\_compat\_to\_kern() & 138 & 167 \\
-    4 & core.c & sched\_copy\_attr() & 4342 & 4381 \\
-    5 & core.c & perf\_copy\_attr() & 9639 & 9676 \\
-    6 & custom\_method.c & cm\_write() & 37 & 54 \\
-    7 & dev-ioctl.c & copy\_dev\_ioctl() & 100 & 109 \\
-    8 & dir.c & ll\_dir\_ioctl() & 1485 & 1504 \\
-    9 & dpt\_i2o.c & adpt\_i2o\_passthru() & 1734 & 1834 \\
-    10 & hpioctl.c & asihpi\_hpi\_ioctl() & 131 & 140 \\
-    11 & ioctl.c & ioctl\_file\_dedupe\_range() & 586 & 597 \\
-    12 & llite\_lib.c & ll\_copy\_user\_md() & 2463 & 2478 \\
-    13 & megaraid\_mm.c & mega\_m\_to\_n() & 3443 & 3467 \\
-    14 & mpt3sas\_ctl.c & \_ctl\_ioctl\_main() & 2261 & 2311 \\
-    15 & nfs4recover.c & cld\_pipe\_downcall() & 730 & 753 \\
-    16 & opal-prd.c & opal\_prd\_write() & 238 & 244 \\
-    17 & psdev.c & coda\_psdev\_write() & 109 & 128 \\
-    18 & scsi\_ioctl.c & sg\_scsi\_ioctl() & 440 & 466 \\
-    19 & tls\_main.c & do\_tls\_setsockopt\_tx() & 351 & 379 \\
-    20 & uhid.c & uhid\_event\_from\_user() & 407 & 455 \\
-    21 & util.c & strndup\_user() & 187 & 195 \\
-    22 & vhost.c & vhost\_vring\_ioctl() & 1361 & 1379 \\
-    23 & vt.c & con\_font\_set() & 4135 & 4152 \\
-    24 & wext-core.c & ioctl\_standard\_iw\_point() & 747 & 809 \\
-    \hline
-    25 & aac.c  & aac\_ioctl\_sendfib() & 2999 & 3007 \\
-    26 & aacraid.c  & aac\_ioctl\_sendfib() & 2763 & 2771 \\
-    27 & bcm2835\_vcio.c  & vcio\_ioctl() & 66 & 72 \\
-    28 & dtrace.c  & dtrace\_dof\_copyin() & 13210 & 13234 \\
-    29 & fasttrap.c  & fasttrap\_ioctl() & 2277 & 2294 \\
-    30 & freebsd32\_misc.c  & freebsd32\_jail() & 2300 & 2311 \\
-    31 & hwpmc\_x86.c  & pmc\_save\_user\_callchain() & 112 & 128 \\
-    32 & kern\_jail.c  & sys\_jail() & 263 & 274 \\
-    33 & linux\_futex.c  & linux\_sys\_futex() & 816 & 819 \\
-    34 & netmap\_pt.c  & ptnetmap\_read\_cfg() & 779 & 790 \\
-    35 & oce\_if.c  & oce\_handle\_passthrough() & 2293 & 2305 \\
-    36 & sys\_capability.c  & sys\_cap\_rights\_limit() & 259 & 267 \\
-    37 & usb\_generic.c  & ugen\_fs\_copy\_in() & 1108 & 1202 \\
-    \hline
+    1 & bus.c & \_\_nd\_ioctl & 942 & 1025 & Type-selection \\
+2 & commctrl.c & ioctl\_send\_fib & 82 & 119 & Size-checking \\
+3 & megaraid\_mm.c & mega\_m\_to\_n & 3443 & 3467 & Validity-checking \\
+	...\\ 
+	\hline
+25 & aac.c  & aac\_ioctl\_sendfib() & 2999 & 3007 & Size-checking \\
+26 & aacraid.c  & aac\_ioctl\_sendfib() & 2763 & 2771 & Size-checking \\
+27 & bcm2835\_vcio.c  & vcio\_ioctl() & 66 & 72 & Size-checking \\
+...\\
+\hline
+37 & signal\_32.c & do\_sigreturn & 86 & 93 & Validity-checking \\
+38 & tcp.c & do\_tcp\_getsockopt & 2774 & 2823 & Reacquisition \\
+39 & ft1000\_debug.c & ft1000\_ioctl & 551 & 566 & Size-checking \\
+...\\
+	\hline
+78 & dtrace.c & dtrace\_dof\_copyin & 11602 & 11626 & Size-checking \\
+79 & nfs\_syscalls.c & fhopen & 620 & 626 & Size-checking \\
+80 & nfs\_vfsops.c & nfs\_vfs\_mount & 1834 & 1872 & Type-selection \\
+81 & ucode.c & copyin\_update & 92 & 117 & Size-checking \\
+\hline
     \label{result}
   \end{tabular}
 \end{table*}
 
 
+% \begin{table*}[htb!]
+%   \centering
+%   \caption{Results of Double-fetch Bugs Detection}
+%   \begin{tabular}{cccccc}
+%     \hline
+%     No. & File & Function & the First Fetch & the Second Fetch & Type  \\   
+%     \hline
+%     1 & bus.c & \_\_nd\_ioctl & 942 & 1025 & Type-selection \\
+% 2 & commctrl.c & ioctl\_send\_fib & 82 & 119 & Size-checking \\
+% 3 & compat.c & cmsghdr\_from\_user\_compat\_to\_kern & 138 & 167 & Size-checking \\
+% 4 & core.c & sched\_copy\_attr & 4342 & 4381 & Size-checking \\
+% 5 & core.c & perf\_copy\_attr & 9639 & 9676 & Size-checking \\
+% 6 & custom\_method.c & cm\_write & 37 & 54 & Size-checking \\
+% 7 & dev-ioctl.c & copy\_dev\_ioctl & 100 & 109 & Size-checking \\
+% 8 & dir.c & ll\_dir\_ioctl & 1485 & 1504 & Size-checking \\
+% 9 & dpt\_i2o.c & adpt\_i2o\_passthru & 1734 & 1834 & Type-selection \\
+% 10 & hpioctl.c & asihpi\_hpi\_ioctl & 131 & 140 & Size-checking \\
+% 11 & ioctl.c & ioctl\_file\_dedupe\_range & 586 & 597 & Size-checking \\
+% 12 & llite\_lib.c & ll\_copy\_user\_md & 2463 & 2478 & Size-checking \\
+% 13 & megaraid\_mm.c & mega\_m\_to\_n & 3443 & 3467 & Validity-checking \\
+% 14 & mpt3sas\_ctl.c & \_ctl\_ioctl\_main & 2261 & 2311 & Validity-checking \\
+% 15 & nfs4recover.c & cld\_pipe\_downcall & 730 & 753 & Validity-checking \\
+% 16 & opal-prd.c & opal\_prd\_write & 238 & 244 & Size-checking \\
+% 17 & psdev.c & coda\_psdev\_write & 109 & 128 & Type-selection \\
+% 18 & scsi\_ioctl.c & sg\_scsi\_ioctl & 440 & 466 & Size-checking \\
+% 19 & tls\_main.c & do\_tls\_setsockopt\_tx & 351 & 379 & Type-selection \\
+% 20 & uhid.c & uhid\_event\_from\_user & 407 & 455 & Type-selection \\
+% 21 & util.c & strndup\_user & 187 & 195 & Size-checking \\
+% 22 & vhost.c & vhost\_vring\_ioctl & 1361 & 1379 & Validity-checking \\
+% 23 & vt.c & con\_font\_set & 4135 & 4152 & Reacquisition \\
+% 24 & wext-core.c & ioctl\_standard\_iw\_point & 747 & 809 & Reacquisition \\
+% 	\hline
+% 25 & aac.c  & aac\_ioctl\_sendfib() & 2999 & 3007 & Size-checking \\
+% 26 & aacraid.c  & aac\_ioctl\_sendfib() & 2763 & 2771 & Size-checking \\
+% 27 & bcm2835\_vcio.c  & vcio\_ioctl() & 66 & 72 & Size-checking \\
+% 28 & dtrace.c  & dtrace\_dof\_copyin() & 13210 & 13234 & Size-checking \\
+% 29 & fasttrap.c  & fasttrap\_ioctl() & 2277 & 2294 & Size-checking \\
+% 30 & freebsd32\_misc.c  & freebsd32\_jail() & 2300 & 2311 & Type-selection \\
+% 31 & hwpmc\_x86.c  & pmc\_save\_user\_callchain() & 112 & 128 & Reacquisition \\
+% 32 & kern\_jail.c  & sys\_jail() & 263 & 274 & Type-selection \\
+% 33 & linux\_futex.c  & linux\_sys\_futex() & 816 & 819 & Validity-checking \\
+% 34 & netmap\_pt.c  & ptnetmap\_read\_cfg() & 779 & 790 & Size-checking \\
+% 35 & oce\_if.c  & oce\_handle\_passthrough() & 2293 & 2305 & Size-checking \\
+% 36 & sys\_capability.c  & sys\_cap\_rights\_limit() & 259 & 267 & Validity-checking \\
+% 	\hline
+% 37 & af\_decnet.c & \_\_dn\_getsockopt & 1525 & 1582 & Reacquisition \\
+% 38 & mpt2sas\_ctl.c & \_ctl\_ioctl\_main & 2158 & 2196 & Validity-checking \\
+% 39 & dpt\_i2o.c & adpt\_i2o\_passthru & 1750 & 1855 & Reacquisition \\
+% 40 & hpioctl.c & asihpi\_hpi\_ioctl & 132 & 141 & Size-checking \\
+% 41 & core.c & atomic\_operation & 136 & 145 & Validity-checking \\
+% 42 & auditsc.c & audit\_log\_single\_execve\_arg & 1032 & 1052 & Size-checking \\
+% 43 & af\_ax25.c & ax25\_setsockopt & 551 & 646 & Reacquisition \\
+% 44 & custom\_method.c & cm\_write & 37 & 54 & Size-checking \\
+% 45 & psdev.c & coda\_psdev\_write & 109 & 128 & Type-selection \\
+% 46 & dm-ioctl.c & copy\_params & 1619 & 1661 & Reacquisition \\
+% 47 & cxgb3\_main.c & cxgb\_extension\_ioctl & 2134 & 2147 & Type-selection \\
+% 48 & dhd\_linux.c & dhd\_ethtool & 3542 & 3548 & Type-selection \\
+% 49 & traps.c & do\_cpu & 1068 & 1070 & Reacquisition \\
+% 50 & ip\_sockglue.c & do\_ip\_setsockopt & 483 & 682 & Reacquisition \\
+% 51 & ipv6\_sockglue.c & do\_ipv6\_setsockopt & 136 & 431 & Reacquisition \\
+% 52 & keyboard.c & do\_kdgkb\_ioctl & 437 & 445 & Size-checking \\
+% 53 & signal\_32.c & do\_sigreturn & 86 & 93 & Validity-checking \\
+% 54 & tcp.c & do\_tcp\_getsockopt & 2774 & 2823 & Reacquisition \\
+% 55 & ft1000\_debug.c & ft1000\_ioctl & 551 & 566 & Size-checking \\
+% 56 & fhandle.c & handle\_to\_path & 182 & 200 & Size-checking \\
+% 57 & sys\_hpux.c & hpux\_sysfs & 442 & 452 & Size-checking \\
+% 58 & i2o\_config.c & i2o\_cfg\_passthru & 826 & 936 & Reacquisition \\
+% 59 & commctrl.c & ioctl\_send\_fib & 81 & 116 & Size-checking \\
+% 60 & wext-core.c & ioctl\_standard\_iw\_point & 714 & 776 & Reacquisition \\
+% 61 & isdn\_ppp.c & isdn\_ppp\_write & 820 & 846 & Type-selection \\
+% 62 & megaraid.c & mega\_m\_to\_n & 3466 & 3490 & Validity-checking \\
+% 63 & swarm\_cs4297a.c & mixer\_ioctl & 1465 & 1470 & Size-checking \\
+% 64 & af\_netlink.c & netlink\_setsockopt & 1911 & 1971 & Reacquisition \\
+% 65 & core.c & perf\_copy\_attr & 6367 & 6404 & Size-checking \\
+% 66 & rtl871x\_ioctl\_linux.c & r8711\_wx\_read32 & 1869 & 1874 & Reacquisition \\
+% 67 & sg.c & sg\_read & 396 & 409 & Reacquisition \\
+% 68 & scsi\_ioctl.c & sg\_scsi\_ioctl & 450 & 470 & Size-checking \\
+% 69 & control\_compat.c & snd\_ctl\_elem\_add\_compat & 353 & 356 & Reacquisition \\
+% 70 & sock.c & sock\_setsockopt & 640 & 757 & Reacquisition \\
+% 71 & 3w-xxxx.c & tw\_chrdev\_ioctl & 911 & 933 & Size-checking \\
+% 72 & 3w-9xxx.c & twa\_chrdev\_ioctl & 671 & 693 & Size-checking \\
+% 73 & 3w-sas.c & twl\_chrdev\_ioctl & 776 & 798 & Size-checking \\
+% 74 & uhid.c & uhid\_event\_from\_user & 279 & 327 & Type-selection \\
+% 75 & vhost.c & vhost\_vring\_ioctl & 620 & 638 & Validity-checking \\
+% 76 & wl\_priv.c & wvlan\_uil\_put\_info & 606 & 639 & Type-selection \\
+% 77 & yam.c & yam\_ioctl & 956 & 979 & Type-selection \\
+% 	\hline
+% 78 & ucode.c & copyin\_update & 92 & 117 & Size-checking \\
+% 79 & dtrace.c & dtrace\_dof\_copyin & 11602 & 11626 & Size-checking \\
+% 80 & nfs\_vfsops.c & nfs\_vfs\_mount & 1834 & 1872 & Type-selection \\
+% 81 & nfs\_syscalls.c & fhopen & 620 & 626 & Size-checking \\
+% 	\hline
+
+%     \label{result}
+%   \end{tabular}
+% \end{table*}
+
+
 \textbf{2. FreeBSD.}
-FreeBSD is an open-source Unix-like operating system, which is the most widely used open-source BSD distribution. The FreeBSD version was 11.1, which was released in July 2017. Note that FreeBSD is a little different from Linux, for FreeBSD uses \verb:copyin(): and \verb:copyin_nofault(): as transfer functions. Thus it needs to modify corresponding pattern code in DFTinker before the experiment. In FreeBSD, 13 cases were found in total, they were shown in Table~\ref{result}.
+FreeBSD is an open-source Unix-like operating system, which is the most widely used open-source BSD distribution. The FreeBSD version was 11.1, which was released in July 2017. Note that FreeBSD is a little different from Linux, for FreeBSD uses \verb:copyin(): and \verb:copyin_nofault(): as transfer functions. Thus it needs to modify corresponding pattern code in DFTinker before the experiment. In FreeBSD, 12 cases were found in total.
 
 
 
@@ -578,7 +668,10 @@ FreeBSD is an open-source Unix-like operating system, which is the most widely u
 OpenBSD is also an open-source UNIX-like operating system and it is one of the three popular distributions of BSD. The OpenBSD version tested is 6.2, which was released in Oct 2017. In our experiment, it didn't find any double-fetch bug in OpenBSD. In fact, OpenBSD provides many security features in the system which are optional or unavailable in other operating systems, and developers audit source code for security frequently. This may be the reason why DFTinker can't find any double-fetch bug in OpenBSD.
 
 \textbf{4. Android.}
-Android is a special distribution of Linux. It uses Linux kernel with specific modification. The Android version tested was 8.1.0 based on Linux kernel version 3.18. Unfortunately, it didn't found double-fetch bugs on Android as well.
+Android is a special distribution of Linux. It uses Linux kernel with specific modification. The Android version tested was 7.0.0 based on Linux kernel version 3.18. We found 41 double-fetch bugs in the Android kernel source.
+
+\textbf{5.Darwin.}
+Darwin is a Unix operating system which is open-sourced by Apple Inc. in 2000. In our experiments, we chose Darwin version 10.13.3, which is the newest version when we conducted the experiments. We totally found 4 double-fetch bugs in Darwin.
 
 \subsection{Automated Patching with Intel TSX}
 \label{evalue2}
@@ -652,9 +745,9 @@ Xu \textit{et al.}\cite{precise} proposed a formal definition of double-fetch bu
 \section{Conclusion}
 \label{conclusion}
 
-This paper proposes an approach to automatically detect and fix double-fetch bugs. We implement a prototype named DFTinker and evaluate it with real kernels. Experiments show that DFTinker is effective and efficient in automatically detecting and fixing double-fetch bugs. DFTinker detected 24 cases in prevalent kernels and the performance overhead of the fixed program is only 1.3\% on average.
+This paper proposes an approach to automatically detect and fix double-fetch bugs. We implement a prototype named DFTinker and evaluate it with real kernels. Experiments show that DFTinker is effective and efficient in automatically detecting and fixing double-fetch bugs. DFTinker detected 81 cases in prevalent kernels and the performance overhead of the fixed program is only 1.3\% on average.
 
-%, we implemented a prototype named DFTinker, which could detect double-fetch bugs and fix code automatically. With more transfer functions, DFTinker identified more double-fetch bug situations and owned a higher accuracy. With stricter rules, DFTinker filtered double-fetch bugs where it couldn't result in fatal errors, lowering false alarm rate significantly. In total, DFTinker detected 24 cases in Linux 4.14.10, 13 cases in FreeBSD 11.1, and no case in OpenBSD 6.2 and Android 8.1.0. Finally, DFTinker used hardware transactional memory to prevent double-fetch bugs, which is efficacious and with a performance overhead of only 1.3\%.
+%, we implemented a prototype named DFTinker, which could detect double-fetch bugs and fix code automatically. With more transfer functions, DFTinker identified more double-fetch bug situations and owned a higher accuracy. With stricter rules, DFTinker filtered double-fetch bugs where it couldn't result in fatal errors, lowering false alarm rate significantly. In total, DFTinker detected 24 cases in Linux 4.14.10, 12 cases in FreeBSD 11.1, and no case in OpenBSD 6.2 and Android 7.0.0. Finally, DFTinker used hardware transactional memory to prevent double-fetch bugs, which is efficacious and with a performance overhead of only 1.3\%.
 
 % \section*{Acknowledgment}
 

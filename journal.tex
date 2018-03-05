@@ -221,7 +221,7 @@ One of the advantages of Coccinelle engine is path-sensitive~\cite{Jones2007The}
 
 \subsection{Transactional Memory and Intel TSX}
 \label{back3}
-Traditionally, transactional memory~\cite{Herlihy1993Transactional,Harris2010Transactional,Hammond2004Transactional,Karnagel2014Improving} is used to simplify concurrent programming. It allows executing load and store instructions in an atomic way. Transactional memory systems provide high-level instructions to developers so as to avoid low-level coding, and this achieves a better access model to shared memory in concurrent programming.Hardware transactional memory achieves transactions by processors, caches, and bus protocol. It provides opportunities to implement dynamic schedules according to specific CPU instructions.
+Traditionally, transactional memory~\cite{Herlihy1993Transactional,Harris2010Transactional,Hammond2004Transactional,Karnagel2014Improving} is used to simplify concurrent programming. It allows executing load and store instructions in an atomic way. Transactional memory systems provide high-level instructions to developers so as to avoid low-level coding, and this achieves a better access model to shared memory in concurrent programming. Hardware transactional memory achieves transactions by processors, caches, and bus protocol. It provides opportunities to implement dynamic schedules according to specific CPU instructions.
 
 Intel Transactional Synchronization Extensions (TSX) came out in 2013~\cite{Yoo2014Performance,Haas2014Enhancing,Goel2014Performance}, making hardware transactional memory available in commodity processors. It is an extension to the x86 instruction set architecture (ISA), providing hardware transactional memory support.
 
@@ -237,9 +237,15 @@ Intel TSX provides two interfaces for transactional execution, Hardware Lock Eli
 % This section presents details about how to improve the pattern that Wang \textit{et al.} used and how to fix code automatically with Intel TSX technology.
 \subsection{Detection of Double-Fetch Bugs}
 \label{design1}
-According to section~\ref{back1}, we can figure out that double-fetch bugs and transfer functions are related closely, for each fetch means an invocation of a transfer function. However, it may also not be a double-fetch bug if there are two transfer functions. It has to meet the condition that the double fetches get the data from the same user address at least. Since there are many complex situations in kernel code, such as assignment and pointer, it needs further and thorough analysis.
+%According to section~\ref{back1}, we can figure out 
+As section~\ref{back1} states, double-fetch bugs and transfer functions are closely related, 
+and each fetch indicates an invocation of a transfer function. However, since there are many 
+complex situations in the kernel code, such as pointer change and aliasing, double-fetch bug 
+detection needs further and thorough analysis.
 
-Wang \textit{et al.} used four transfer functions in his study, they are \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():, whose functionality is transferring data from user space to kernel space. Besides, he proposed six rules to improve precision and find corner cases, as Fig.\ref{Cocci} shows, they are as follows:
+%it may also not be a double-fetch bug if there are two transfer functions. It has to meet the condition that the double fetches get the data from the same user address at least. Since there are many complex situations in kernel code, such as assignment and pointer, it needs further and thorough analysis.
+
+Wang \textit{et al.} focues four transfer functions (\verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():) to detect double-fetch bugs, whose functionality is transferring data from user space to kernel space. Besides, he proposed six rules to improve precision and find corner cases, as Fig.\ref{Cocci} shows, which are listed as follows:
 
 \begin{figure}
   \centering
@@ -250,22 +256,27 @@ Wang \textit{et al.} used four transfer functions in his study, they are \verb:g
 
 
 \textbf{Rule 0: Basic pattern matching rule.}
-This is the basic scene when two fetches get the data from the exact same user address. As to the more complex situations like assignment and pointer, the other five rules are used.
+This is the basic scene where two fetches get the data from the exact same user address by invoking the transfer functions. %As to the more complex situations like assignment and pointer, the other five rules are used.
 
 \textbf{Rule 1: No pointer change.}
 This rule is used to eliminate the cases when the pointer to the user space changes between two fetches, such as self-increment, adding or subtracting an offset. This rule can reduce the false positive rate of detection.
 
 \textbf{Rule 2: Pointer aliasing.}
-There are many pointer assignments in kernel code, so different pointers in double fetches may point to the same user address. Wang \textit{et al.} used an assignment between double fetches to detect this situation as shown in Fig.\ref{Cocci}.
+There are many pointer changes (assignments) in the kernel code, so different pointers in double fetches can point to the same user address to facilite the data reuse. Wang \textit{et al.} considered one occurrence of pointer assignment between the two fetches to reduce false negatives.
+%double fetches to detect this situation as shown in Fig.\ref{Cocci}.
 
 \textbf{Rule 3: Explicit type conversion.}
-Pointer type conversion is always used while fetching data from the user space. At the first fetch, the pointer may be converted to a message header pointer and converted to a whole message pointer at the second fetch. This rule can reduce the false negative rate of detection.
+%不要说些没用的话！下面第一句话的有什么意义？
+%Pointer type conversion is always used while fetching data from the user space. At the first fetch, the pointer may be converted to a message header pointer and converted to a whole message pointer at the second fetch. This rule can reduce the false negative rate of detection.
+Pointer type conversion is a situation that the pointer is converted to a message header pointer at the first fetch and then is converted to a pointer to the whole message at the second fetch. This rule can reduce the false negative rate of detection.
 
 \textbf{Rule 4: Combination of element fetch and pointer fetch.}
 Another complex situation is that the user addresses fetched twice are not exactly the same. For example, at the first fetch, the kernel fetches a data member of a struct such as \verb:ptr->length:, and then, after checking validity or preparation, the kernel fetches the whole struct using \verb:ptr: at the second fetch.
 
 \textbf{Rule 5: Loop involvement.}
-The last rule is about loop operations. As mentioned above, Coccinelle engine is path-sensitive, so it will expand a loop multiple times, i.e., each transfer function will be scanned more than one time. Thus, the transfer function at the end of a loop and transfer function at the beginning of the next loop will be paired as a double fetch, which should be excluded as false positive.
+The last rule is about loop operations. Since the Coccinelle engine is path-sensitive, 
+a loop will be expanded multiple times, i.e., each transfer function will be scanned 
+more than one time. Thus, a transfer function at the end of a loop will match with a transfer function at the beginning of the next loop as a double fetch, which should be excluded as the pointer has changed when.
 
 
 
@@ -300,9 +311,15 @@ The last rule is about loop operations. As mentioned above, Coccinelle engine is
 
 
 
-However, these rules are not strong enough to cover all double-fetch bugs. Such as function \verb:copy_dev_ioctl(): in file \verb:/fs/autofs4/dev-ioctl.c:, as shown in Fig.\ref{dev-ioctl}. In this double-fetch bug, the first fetch happens at line 100 with a transfer function \verb:copy_from_user(): and the second fetch happens at line 109 with a normal function \verb:memdup_user():. They both copy the data from the same user address pointed by the pointer \verb:in: to the kernel space. However, function \verb:memdup_user: is not one of the four transfer functions Wang \textit{et al.} used, so it won't be detected by Wang \textit{et al.}'s method. But in fact, function \verb:memdup_user: indeed contains a transfer function \verb:copy_from_user(): and some other operations, it can be regarded as a transfer function completely in this case.
-
-The rules improved are as follows:
+However, these rules are not strong enough to cover all double-fetch bugs, such as function
+\verb:copy_dev_ioctl(): in file \verb:/fs/autofs4/dev-ioctl.c:. As Fig.\ref{dev-ioctl} shows, 
+in this double-fetch bug, the first fetch occurs at line 100 with a transfer function \verb:copy_from_user(): and the second fetch occurs at line 109 with a normal function 
+\verb:memdup_user():. They both copy the data from the same user address pointed by the 
+pointer \verb:in: to the kernel space. However, function \verb:memdup_user: is not one of 
+the four transfer functions Wang \textit{et al.} used, so it won't be detected by Wang 
+\textit{et al.}'s method. But in fact, function \verb:memdup_user: indeed contains a 
+transfer function \verb:copy_from_user(): and some other operations, thus, it can be 
+regarded as a transfer function in this case. We improve the rules as follows.
 
 
 \begin{table}[t!]
@@ -332,10 +349,8 @@ The rules improved are as follows:
 \label{transfer-func}
 \end{table}
 
-\textbf{Add more transfer functions.}Wang \textit{et al.} used only four transfer functions in his experiment, \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():. However, there are also many normal functions containing transfer functions, and their targets are transferring data from user space to kernel space as well, such as \verb:memdup_user(): mentioned above. In addition to funcions, there are also many macros playing the same role in the kernel, like \verb:__copy_from_user_inatomic():.
-In the double-fetch bugs detection scenario, these normal functions and macros can be regarded as transfer functions directly. 
-
-Table~\ref{transfer-func} shows the 15 functions (and macros) used in double-fetch bugs detection and their types and parameters. Except for functions used, there are still many functions in kernel meet the condition that transferring data from user space to kernel space, however, many of them have not been used in the code. So these functions are abandoned and lifted efficiency.
+\textbf{Add more transfer functions.} Wang \textit{et al.} used only four transfer functions in his experiment, \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():. However, there are also many normal functions containing transfer functions, and their targets are transferring data from user space to kernel space as well, such as \verb:memdup_user(): mentioned above. In addition to funcions, there are also many macros playing the same role in the kernel, like \verb:__copy_from_user_inatomic():.
+In the double-fetch bugs detection scenario, these normal functions and macros can be regarded as transfer functions as well. Table~\ref{transfer-func} shows 15 normal functions (and macros) we include to detect double-fetch bugs.% detection and their types and parameters. Except for functions used, there are still many functions in kernel meet the condition that transferring data from user space to kernel space, however, many of them have not been used in the code. So these functions are abandoned and lifted efficiency.
 
 \textbf{Fix incomplete rules.}
 Rules which Wang \textit{et al.} proposed are theoretically correct. However, in the implementation phase, they were achieved incompletely, which leaded false negatives. For instance, in \verb:/fs/nfsd/nfs4recover.c:, as shown in Fig.\ref{fix}, the first fetch happens at line 730, fetching the data pointed by \verb:&cmsg->cm_xid:, the second fetch happens at line 753, fetching the data pointed by \verb:src:, and there is no assignment or statement between two fetches. According to Rule 2 in section~\ref{design1}, this is not a double-fetch bug. But in fact, this is indeed a double-fetch bug for its assignment happens at line 717, thus \verb:cmsg: and \verb:src: point to the same user address actually. This case is missed because of careless implementation. We fixed the rule and reduced the false negative rate.
@@ -508,24 +523,30 @@ more thorough and powerful fallback path could be established through scanning t
 
 \section{Implementation}%0.5
 \label{imple}
-DFTinker was implemented on a Linux laptop running Ubuntu 16.04 x64, with one Intel i7-7700HQ 2.6GHz processor, 8GB of memory, 250GB SSD. The Coccinelle version was 1.0.4 with Python support.
+%实现是讲你基于什么语言，代码量，什么框架、工具版本等细信息。你下面说的机器信息是实验环境，不一样。
+DFTinker was implemented ...
 
-The experiment used Linux 4.14.10, OpenBSD 6.2, FreeBSD 11.1, Android 7.0.0 and Darwin 10.13.3, which were the relatively newer version when the experiment was conducted. To prove that DFTinker can find out bugs reported by prior works, the experiment was also conducted on Linux 4.5, the same version Wang \textit{et al.} used to experiment on.
 
-To evaluate the efficiency of the fixed operating system, another Ubuntu 14.04 x64 was implemented. We chose five vulnerable functions from the detection results and fixed them by DFTinker. By comparing the run time of the invocation of the vulnerable functions before fixing and after fixing, we could get the performance overhead of DFTinker. This operating system ran on a server with a 4-core Intel Core i7-6700 CPU (clocked at 3.40GHz, supporting RTM) with each core possessing a private 32KB L1 cache and a private 256KB L2 cache and a shared 8MB L3 cache. The memory was 32GB and the storage was a 250GB SSD.
 
 \section{Evaluation}%1.5
 \label{evalue}
 This section will discuss DFTinker's ability to detect double fetches and the performance of the operating system fixed by DFTinker.
+
+The experiment was conducted on a Linux laptop running Ubuntu 16.04 x64, with one Intel i7-7700HQ 2.6GHz processor, 8GB of memory, 250GB SSD. The Coccinelle version was 1.0.4 with Python support. We used Linux 4.14.10, OpenBSD 6.2, FreeBSD 11.1, Android 7.0.0, and Darwin 10.13.3, which were the relatively newer version when the experiment was conducted. To prove that DFTinker can find out bugs reported by prior works, the experiment was also conducted on Linux 4.5, the same version Wang \textit{et al.} used to experiment on.
+
+To evaluate the efficiency of the fixed operating system, another Ubuntu 14.04 x64 was implemented. We chose five vulnerable functions from the detection results and fixed them by DFTinker. By comparing the run time of the invocation of the vulnerable functions before fixing and after fixing, we could get the performance overhead of DFTinker. This operating system ran on a server with a 4-core Intel Core i7-6700 CPU (clocked at 3.40GHz, supporting RTM) with each core possessing a private 32KB L1 cache and a private 256KB L2 cache and a shared 8MB L3 cache. The memory was 32GB and the storage was a 250GB SSD.
 \subsection{Detection of Double-Fetch Bugs}
 \label{evalue1}
 
 
-At first, DFTinker was run to confirm Wang \textit{et al.}'s work~\cite{wang} with the Linux kernel 4.5, the same version Wang \textit{et al.} used to experiment. It successfully reached Wang \textit{et al.}'s result. All five bugs reported in Linux kernel 4.5 were found (CVE-2016-5728, CVE-2016-6130, CVE-2016-6136, CVE-2016-6156, CVE-2016-6480), which proved that DFTinker is as good as Wang \textit{et al.}'s work.
+At first, DFTinker was run with the Linux kernel 4.5, the same version Wang \textit{et al.}~\cite{wang}
+used， so as to confirm Wang \textit{et al.}'s work. DFTinker successfully reached Wang \textit{et al.}'s result. All five known double-fetch bugs (CVE-2016-5728, CVE-2016-6130, CVE-2016-6136, CVE-2016-6156, CVE-2016-6480)
+reported in Linux kernel 4.5 were found , which proved that DFTinker has the same effectiveness as Wang
+\textit{et al.}'s work in detecting double-fetch bugs.
 
 
-Then it was applied to five open source kernels: Linux 4.14.10, FreeBSD 11.1, OpenBSD 6.2, Android 7.0.0 (kernel version 3.18) and Darwin 10.13.3. These were the relatively newer version when the experiment was conducted. The statistical result is shown as Table~\ref{stat} and parts
-\footnote{Due to the limitation of the page, the full results of the double-fetch bugs detection are available at https://github.com/luoyyqq}​ of the detailed results are shown in Table~\ref{result}.
+Then DFTinker was applied to five open source kernels: Linux 4.14.10, FreeBSD 11.1, OpenBSD 6.2, Android 7.0.0 (kernel version 3.18) and Darwin 10.13.3. These were the relatively newer version when the experiment was conducted. The statistical result is shown in Table~\ref{stat} and parts
+\footnote{Due to the space limitation, the full results are available at https://github.com/luoyyqq}​ of the detailed results are shown in Table~\ref{result}.
 
 \textbf{1. Linux.} The Linux kernel used is version 4.14.10 which was released on Dec 29, 2017. In this version, five double-fetch bugs reported by Wang \textit{et al.} had already been fixed, but it still found 24 cases in total.
 
@@ -660,17 +681,20 @@ Then it was applied to five open source kernels: Linux 4.14.10, FreeBSD 11.1, Op
 
 
 \textbf{2. FreeBSD.}
-FreeBSD is an open-source Unix-like operating system, which is the most widely used open-source BSD distribution. The FreeBSD version was 11.1, which was released in July 2017. Note that FreeBSD is a little different from Linux, for FreeBSD uses \verb:copyin(): and \verb:copyin_nofault(): as transfer functions. Thus it needs to modify corresponding pattern code in DFTinker before the experiment. In FreeBSD, 12 cases were found in total.
+%有几个人不认识FreeBSD？需要费工夫介绍么？下同
+%FreeBSD is an open-source Unix-like operating system, which is the most widely used open-source BSD distribution. 
+The FreeBSD version was 11.1, which was released in July 2017. Note that FreeBSD is a little different from Linux, for FreeBSD uses \verb:copyin(): and \verb:copyin_nofault(): as transfer functions. Thus it needs to modify corresponding pattern code in DFTinker before the experiment. In FreeBSD, 12 cases were found in total.
 
 
 
 \textbf{3. OpenBSD.}
-OpenBSD is also an open-source UNIX-like operating system and it is one of the three popular distributions of BSD. The OpenBSD version tested is 6.2, which was released in Oct 2017. In our experiment, it didn't find any double-fetch bug in OpenBSD. In fact, OpenBSD provides many security features in the system which are optional or unavailable in other operating systems, and developers audit source code for security frequently. This may be the reason why DFTinker can't find any double-fetch bug in OpenBSD.
+%OpenBSD is also an open-source UNIX-like operating system and it is one of the three popular distributions of BSD. 
+The OpenBSD version tested is 6.2, which was released in Oct 2017. In our experiment, DFTinker didn't find any double-fetch bug in OpenBSD. In fact, OpenBSD provides many security features in the system which are optional or unavailable in other operating systems, and developers audit source code for security frequently. This may be the reason why DFTinker can't find any double-fetch bug in OpenBSD.
 
 \textbf{4. Android.}
 Android is a special distribution of Linux. It uses Linux kernel with specific modification. The Android version tested was 7.0.0 based on Linux kernel version 3.18. We found 41 double-fetch bugs in the Android kernel source.
 
-\textbf{5.Darwin.}
+\textbf{5. Darwin.}
 Darwin is a Unix operating system which is open-sourced by Apple Inc. in 2000. In our experiments, we chose Darwin version 10.13.3, which is the newest version when we conducted the experiments. We totally found 4 double-fetch bugs in Darwin.
 
 \subsection{Automated Patching with Intel TSX}
@@ -703,10 +727,13 @@ To evaluate the overhead performance of the fixed code, an Ubuntu 14.04 x64 was 
 \section{Discussion}%1
 \label{discuss}
 
-Double-fetch bugs are significant problems in the operating systems, and they have been found in almost all the modern kernels, such as the Windows, Linux, FreeBSD, and Android~\cite{wang}. Double-fetch bugs have a long history, and some of them existed over 10 years (CVE-2016-6480). Besides, potential double-fetch bugs (currently not buggy) can turn into buggy ones when the code is updated without paying special attention to the double fetch issue~\cite{wang}, such as CVE-2016-5728 and CVE-2016-6516. Thus, in this paper, we take all the potential double-fetch bug situations into consideration to conduct a thorough detection and fix.
+Double-fetch bugs are significant problems in the operating systems, and they have been found in almost all the modern kernels, such as the Windows, Linux, FreeBSD, and Android~\cite{wang,precise}. Double-fetch bugs have a long history, and some of them existed over 10 years (CVE-2016-6480). Besides, potential double-fetch bugs (currently not buggy) can turn into buggy ones when the code is updated without paying special attention to the double fetch issue, such as CVE-2016-5728 and CVE-2016-6516. Wang \textit{et al.}~\cite{wang} call such situations as benigh double-fetch situations and paid special attention to them. Xu \textit{et al.}\cite{precise} regarded such potential bugs as real bugs. Thus, in this paper, we take all the potential double-fetch bug situations into consideration as well to conduct a thorough detection and fix.
 
+We have implemented a tool named DFTinker to automatically detect and fix double-fetch bugs. DFTinker can analyze the whole kernel (including all drivers) in one execution, which has a good code coverage. In addition, DFTinker can detect and fix the bug at the same time, which is efficient. Furthermore, it can prevent potential double-fetch bug that is undetectable with current approach, such as the special double-fetch bug (CVE-2015-8550) introduced by the compiler~\cite{wilhelm15tracing}.  
 
-Although DFTinker achieves a decent performance in detecting and fixing double-fetch bugs, it has limitations. It relies on the availability of the source code, which is suitable for in-house testing. It cannot handle the special case that the double-fetch bug does not reside in the source code but is introduced by the compiler (CVE-2015-8550)~\cite{wilhelm15tracing}. We will include such situations in the future work. 
+Although DFTinker achieves a decent performance in detecting and fixing double-fetch bugs, it relies on the availability of the source code, which is suitable for in-house testing. We will take the binary situations into consideration in the future work. 
+
+%It cannot handle the special case that the double-fetch bug does not reside in the source code but is introduced by the compiler (CVE-2015-8550)~\cite{wilhelm15tracing}. We will include such situations in the future work. 
 
 
 %\begin{itemize}

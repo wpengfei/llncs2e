@@ -34,14 +34,16 @@
 
 \title{DFTinker: Automated Detecting and Fixing Double-fetch Bugs with Transactional Memory}
 
-
-
-
 \author{
 Yingqi Luo\inst{1} \and
 Pengfei Wang\inst{1} \and
 Xu Zhou\inst{1} \and
 Kai Lu\inst{1}}
+
+\institute{National University of Defense Technology, Changsha Hunan, P.R.China}
+
+\maketitle
+
 
 % \IEEEauthorblockN{Yingqi~Luo,
 %         Pengfei~Wang,
@@ -54,9 +56,6 @@ Kai Lu\inst{1}}
 % \thanks{Y. Luo, P. Wang, X. Zhou and K. Lu are with School of Computer, National University of Defense Technology, No.109, Deya Rd., Changsha City, P.R.China.}
 % \thanks{Corresponding author is Y. Luo (email: nudtlyq@163.com)}
 %}
-\institute{National University of Defense Technology, Changsha Hunan, P.R.China}
-
-\maketitle
 
 \begin{abstract}
 %\bfseries
@@ -191,7 +190,7 @@ In modern operating systems, the kernel space is always separated from the user 
   	  ...
 86  }
 \end{lstlisting}
-  \caption{A Double-Fetch Bug (CVE-2016-6130) in File \textbf{/drivers/s390/char/ sclp\_ctl.c} of Linux Kernel 4.5}
+  \caption{A Double-fetch Bug (CVE-2016-6130) in File \textbf{/drivers/s390/char/ sclp\_ctl.c} of Linux Kernel 4.5}
   \label{df-6130}
 \end{figure}
 
@@ -207,13 +206,13 @@ Type selection is the scenario where the data that kernel fetches the first time
 Size checking is the scenario where the kernel fetches the messages' length at the first fetch, after checking the validity of the length and allocating the right space for the message, the kernel gets the message to the kernel space at the second fetch. This scenario is also vulnerable. Once the message length is replaced by a larger value, a buffer overflow may occur, for a larger string copying into a limited space. CVE-2016-5728, CVE-2016-6130, CVE-2016-6156, CVE-2016-6480, CVE-2015-1420 all belong to this scenario.
 
 \textbf{Shallow Copy.}
-The last scenario is shallow copy where the data copied from the user space to  the kernel space contains a pointer to another buffer in the user space. In this scene, the second buffer in the user space needs another transfer function, i.e., the second fetch. Fortunately, this kind of double fetches may not harm for each fetch transferring data from different space.
+The last scenario is shallow copy where the data copied from the user space to the kernel space contains a pointer to another buffer in the user space. In this scene, the second buffer in the user space needs another transfer function, i.e., the second fetch. Fortunately, this kind of double fetches may not harm for each fetch transferring data from different space.
 
 However, these three types cannot cover all double-fetch bugs and own a high false alarm rate, we propose a better model in section~\ref{design1}.
 
 \subsection{Coccinelle Engine}
 \label{back2}
-%According to Section~\ref{back1}, it can figure out that double-fetch bugs and transfer functions are related closely, for each fetch means an invocation of a transfer function. Thus Wang \textit{et al.}~\cite{wang} came up with a pattern-based static analysis method, using the appearance of transfer functions to identify double fetches. He used Coccinelle engine to achieve this.
+%According to Section~\ref{back1}, it can figure out that double-fetch bugs and transfer functions are related closely, for each fetch means an invocation of a transfer function. Thus, Wang \textit{et al.}~\cite{wang} came up with a pattern-based static analysis method, using the appearance of transfer functions to identify double fetches. He used Coccinelle engine to achieve this.
 
 Coccinelle~\cite{Jones2007The,Stuart2008Hunting} engine is a program matching and transformation engine. It uses language SmPL (Semantic Patch Language) as rules to perform matching and transformations in C code. Coccinelle was initially targeted towards performing collateral evolutions in Linux, and it is widely used for finding and fixing bugs in system code now~\cite{lawall2010finding}.
 
@@ -227,7 +226,7 @@ Intel Transactional Synchronization Extensions (TSX) came out in 2013~\cite{Yoo2
 
 Intel TSX provides two interfaces for transactional execution, Hardware Lock Elision(HLE) and Restricted Transactional Memory(RTM).
 
-\textbf{HLE.} HLE provides two new prefixes of instruction, \verb:XACQUIRE: and \verb:XRELEASE:. They share the same opcode of \verb:REPNE: and \verb:REPE:. Once the processor does not support TSX, prefixes \verb:REPNE: and \verb:REPE: will be ignored and it does not affect the instruction execution. Thus HLE can be backward compatible. If there is a conflict, transaction will rerun from the \verb:XACQUIRE:-prefixed instruction.
+\textbf{HLE.} HLE provides two new prefixes of instruction, \verb:XACQUIRE: and \verb:XRELEASE:. They share the same opcode of \verb:REPNE: and \verb:REPE:. Once the processor does not support TSX, prefixes \verb:REPNE: and \verb:REPE: will be ignored and it does not affect the instruction execution. Thus, HLE can be backward compatible. If there is a conflict, transaction will rerun from the \verb:XACQUIRE:-prefixed instruction.
 
 \textbf{RTM.} RTM provides more friendly usability for developers. It defines three new instructions: \verb:XBEGIN:, \verb:XEND:, and \verb:XABORT:. Programmers can use \verb:XBEGIN: and \verb:XEND: to specify the code region needs to be transactional executed. \verb:XABORT: is used to abort a hardware transaction. Moreover, a \verb:XTEST: instruction can be used to tell whether the processor is in transactional execution mode. As RTM cannot guarantee that the transactions been executed successfully, programmers need to prepare a fallback path in case never successes.
 
@@ -235,7 +234,7 @@ Intel TSX provides two interfaces for transactional execution, Hardware Lock Eli
 \label{design}
 
 % This section presents details about how to improve the pattern that Wang \textit{et al.} used and how to fix code automatically with Intel TSX technology.
-\subsection{Detection of Double-Fetch Bugs}
+\subsection{Detection of Double-fetch Bugs}
 \label{design1}
 %According to section~\ref{back1}, we can figure out 
 As section~\ref{back1} states, double-fetch bugs and transfer functions are closely related, 
@@ -246,13 +245,13 @@ detection needs further and thorough analysis.
 
 %it may also not be a double-fetch bug if there are two transfer functions. It has to meet the condition that the double fetches get the data from the same user address at least. Since there are many complex situations in kernel code, such as assignment and pointer, it needs further and thorough analysis.
 
-Wang \textit{et al.} focues four transfer functions (\verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():) to detect double-fetch bugs, whose functionality is transferring data from user space to kernel space. Besides, he proposed six rules to improve precision and find corner cases, as Fig.\ref{Cocci} shows, which are listed as follows:
+Wang \textit{et al.} focues four transfer functions to detect double-fetch bugs, i.e., \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():, the functionality of which is transferring data from user space to kernel space. Besides, he proposed six rules to improve precision and find corner cases, as Fig.\ref{Cocci} shows, which are listed as follows:
 
 
 \begin{figure}
   \centering
   \includegraphics[width=10cm]{refined}
-  \caption{Refined Coccinelle-Based Double-Fetch Bugs Detection~\cite{wang}}
+  \caption{Refined Coccinelle-Based Double-fetch Bugs Detection~\cite{wang}}
   \label{Cocci}
 \end{figure}
 
@@ -270,7 +269,7 @@ There are many pointer changes (assignments) in the kernel code, so different po
 \textbf{Rule 3: Explicit type conversion.}
 %不要说些没用的话！下面第一句话的有什么意义？
 %Pointer type conversion is always used while fetching data from the user space. At the first fetch, the pointer may be converted to a message header pointer and converted to a whole message pointer at the second fetch. This rule can reduce the false negative rate of detection.
-Pointer type conversion is a situation that the pointer is converted to a message header pointer at the first fetch and then is converted to a pointer to the whole message at the second fetch. This rule can reduce the false negative rate of detection.
+Pointer type conversion is a situation that the pointer is converted to a message header pointer at the first fetch and then, converted to a pointer to the whole message at the second fetch. This rule can reduce the false negative rate of detection.
 
 \textbf{Rule 4: Combination of element fetch and pointer fetch.}
 Another complex situation is that the user addresses fetched twice are not exactly the same. For example, at the first fetch, the kernel fetches a data member of a struct such as \verb:ptr->length:, and then, after checking validity or preparation, the kernel fetches the whole struct using \verb:ptr: at the second fetch.
@@ -308,7 +307,7 @@ more than one time. Thus, a transfer function at the end of a loop will match wi
 	  ...
 114  }   
 \end{lstlisting}
-  \caption{An Undetectable Double-Fetch Bug in File \textbf{/fs/autofs4/dev-ioctl.c}}
+  \caption{An Undetectable Double-fetch Bug in File \textbf{/fs/autofs4/dev-ioctl.c}}
   \label{dev-ioctl}
 \end{figure}
 
@@ -317,7 +316,7 @@ more than one time. Thus, a transfer function at the end of a loop will match wi
 
 However, these rules are not strong enough to cover all double-fetch bugs, such as function
 \verb:copy_dev_ioctl(): in file \verb:/fs/autofs4/dev-ioctl.c:. As Fig.\ref{dev-ioctl} shows, 
-in this double-fetch bug, the first fetch occurs at line 100 with a transfer function \verb:copy_from_user(): and the second fetch occurs at line 109 with a normal function 
+in this double-fetch bug, the first fetch occurs at line 100 with a transfer function \verb:copy_from_user(): and the second fetch occurs at line 109 with a function 
 \verb:memdup_user():. They both copy the data from the same user address pointed by the 
 pointer \verb:in: to the kernel space. However, function \verb:memdup_user: is not one of 
 the four transfer functions Wang \textit{et al.} used, so it won't be detected by Wang 
@@ -354,12 +353,12 @@ regarded as a transfer function in this case. We improve the rules as follows.
 \end{table}
 
 
-\textbf{Add more transfer functions.} Wang \textit{et al.} used only four transfer functions in his experiment, \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():. However, there are also many normal functions containing transfer functions, and their targets are transferring data from user space to kernel space as well, such as \verb:memdup_user(): mentioned above. In addition to funcions, there are also many macros playing the same role in the kernel, like \verb:__copy_from_user_inatomic():.
-In the double-fetch bugs detection scenario, these normal functions and macros can be regarded as transfer functions as well. Table~\ref{transfer-func} shows 15 normal functions (and macros) we include to detect double-fetch bugs.% detection and their types and parameters. Except for functions used, there are still many functions in kernel meet the condition that transferring data from user space to kernel space, however, many of them have not been used in the code. So these functions are abandoned and lifted efficiency.
+\textbf{Add more transfer functions.} Wang \textit{et al.} used only four transfer functions in his experiment, \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():. However, there are also many other functions containing transfer functions, and their targets are transferring data from user space to kernel space as well, such as \verb:memdup_user(): mentioned above. In addition to funcions, there are also many macros playing the same role in the kernel, like \verb:__copy_from_user_inatomic():.
+In the double-fetch bugs detection scenario, these functions and macros can be regarded as transfer functions as well. Table~\ref{transfer-func} shows 15 functions (and macros) we include to detect double-fetch bugs.% detection and their types and parameters. Except for functions used, there are still many functions in kernel meet the condition that transferring data from user space to kernel space, however, many of them have not been used in the code. So these functions are abandoned and lifted efficiency.
 
 
 \textbf{Fix incomplete rules.}
-Rules which Wang \textit{et al.} proposed are theoretically correct. However, in the implementation phase, they were achieved incompletely, which leaded false negatives. For instance, in \verb:/fs/nfsd/nfs4recover.c:, as shown in Fig.\ref{fix}, the first fetch happens at line 730, fetching the data pointed by \verb:&cmsg->cm_xid:, the second fetch happens at line 753, fetching the data pointed by \verb:src:, and there is no assignment or statement between two fetches. According to Rule 2 in section~\ref{design1}, this is not a double-fetch bug. But in fact, this is indeed a double-fetch bug for its assignment happens at line 717, thus \verb:cmsg: and \verb:src: point to the same user address actually. This case is missed because of careless implementation. We fixed this kind of rules and reduced the false negative rate.
+Rules which Wang \textit{et al.} proposed are theoretically correct. However, in the implementation phase, they were achieved incompletely, which leaded false negatives. For instance, in \verb:/fs/nfsd/nfs4recover.c:, as shown in Fig.\ref{fix}, the first fetch happens at line 730, fetching the data pointed by \verb:&cmsg->cm_xid:, the second fetch happens at line 753, fetching the data pointed by \verb:src:, and there is no assignment or statement between two fetches. According to Rule 2 in section~\ref{design1}, this is not a double-fetch bug. But in fact, this is indeed a double-fetch bug for its assignment happens at line 717. Thus, \verb:cmsg: and \verb:src: point to the same user address actually. This case is missed because of careless implementation. We fixed this kind of rules and reduced the false negative rate.
 
 \begin{figure}[t]
   \centering
@@ -384,7 +383,7 @@ Rules which Wang \textit{et al.} proposed are theoretically correct. However, in
 	  ...
 758 }
 \end{lstlisting}
-  \caption{An Undetectable Double-Fetch Bug in File \textbf{/fs/nfsd/nfs4recover.c}.}
+  \caption{An Undetectable Double-fetch Bug in File \textbf{/fs/nfsd/nfs4recover.c}.}
   \label{fix}
 \end{figure}
 
@@ -428,7 +427,7 @@ As shown in Fig.\ref{return}, there are two fetches at line 850 and 879, and the
 
 %\drivers\isdn\hysdn\hysdn_procconf.c
 \textbf{2. Two fetches are in the different branches.}
-Another situation is when the two fetches are in the different branches, just like a \verb:SWITCH: statement. For instance, function \verb:hysdn_conf_write: in \verb:\drivers\isdn\hysdn\hysdn_procconf.c: is matched with double-fetch bugs detection. But its two fetches are located in the different branches, the first fetch is in the \verb:IF: statement with condition \texttt{cnf->state == CONF\_STATE\_DETECT} and the second fetch is in the \verb:IF: statement with condition \texttt{cnf->state == CONF\_STATE\_POF}. These two conditions can never be satisfied at the same time, so this situation is also a non-double-fetch bug situation.
+Another situation is when the two fetches are in the different branches, just like a \verb:SWITCH: statement. For instance, function \verb:hysdn_conf_write: in \verb:\drivers\isdn\hysdn_procconf.c: is matched with double-fetch bugs detection. But its two fetches are located in the different branches, the first fetch is in the \verb:IF: statement with condition \texttt{cnf->state == CONF\_STATE\_DETECT} and the second fetch is in the \verb:IF: statement with condition \texttt{cnf->state == CONF\_STATE\_POF}. These two conditions can never be satisfied at the same time, so this situation is also a non-double-fetch bug situation.
 
 Besides, based on the improvement mentioned above, we summed up the other two types of double-fetch bugs. They are as follows:
 
@@ -494,7 +493,7 @@ Previous research only proposed suggestions on preventing double-fetch bugs~\cit
 %\textbf{(5) Synchronize Fetches.} 
 %The last method is using synchronized fetches. Traditional synchronization mechanisms used in parallel programs, such as locks, are suitable for resolving double-fetch bugs. They will provide a guarantee of data consistency in the user space. However, this method will sacrifice performance of the system, making itself worthless.
 
-Transactional memory, as an emerging parallel programming paradigm, provides opportunities to facilitate the dynamic schedules via speculative execution. Instead of pessimistically locking the shared memory locations to prevent potential conflicting concurrent updates, transactional executions optimistically elide the lock and speculatively perform memory operations. Thus transactional memory becomes a promising solution that provides programmer-friendly usability without sacrificing performance.
+Transactional memory, as an emerging parallel programming paradigm, provides opportunities to facilitate the dynamic schedules via speculative execution. Instead of pessimistically locking the shared memory locations to prevent potential conflicting concurrent updates, transactional executions optimistically elide the lock and speculatively perform memory operations. Thus, transactional memory becomes a promising solution that provides programmer-friendly usability without sacrificing performance.
 
 DFTinker's fixing function is implemented using Intel's Restricted Transactional Memory (RTM) software interface. RTM defines three new instructions: \verb:XBEGIN:, \verb:XEND:, and \verb:XABORT:. Programmers can use \verb:XBEGIN: and \verb:XEND: to specify the begin and end of a hardware transaction and use \verb:XABORT: to explicitly abort a hardware transaction. Additionally, one can adopt the \verb:XTEST: instruction to check whether the processor is executing a code region in transactional execution mode. Due to its best-effort nature, RTM never guarantees successful commit of hardware transactions, which necessitates a fallback path to ensure forward progress.
 
@@ -503,13 +502,13 @@ DFTinker's fixing function is implemented using Intel's Restricted Transactional
 
 As Fig.\ref{speculative-lock} shows, a standard mutex lock is employed as the fallback path. 
 Our lock method firstly initiates a hardware transaction via \verb:XBEGIN: and checks the state of the mutex immediately at the beginning of the transaction. The locked state of the mutex lock indicates that there is a transaction executing on the fallback path, and all the speculative executions must be canceled. 
-If the mutex lock is free, our lock method just returns (without touching the mutex variable) and leaves the processor in the transactional execution mode thus that it could perform updates to latents speculatively with zero synchronization overhead. 
+If the mutex lock is free, our lock method just returns (without touching the mutex variable) and leaves the processor in the transactional execution mode. Thus, it could perform updates to latents speculatively with zero synchronization overhead. 
 Note that this is only a basic fallback scheme in Fig.\ref{speculative-lock} for simplicity, 
 more thorough and powerful fallback path could be established through scanning the \textit{abort status} register to get the detailed cause for the abort. 
 
 \begin{table}[t]
   \centering
-  \caption{Statistical Results of Detection of Double-Fetch Bugs}
+  \caption{Statistical Results of Detection of Double-fetch Bugs}
   \begin{tabular}{cccccccc}
     \hline
     Kernel & Version & Files & \makecell{Size \\ Checking} & \makecell{Type \\ Selection} & \makecell{Validity \\ Checking} & Reacquisition & \makecell{Total \\ Bugs}\\    
@@ -531,40 +530,35 @@ more thorough and powerful fallback path could be established through scanning t
 \label{imple}
 
 %实现是讲你基于什么语言，代码量，什么框架、工具版本等细信息。你下面说的机器信息是实验环境，不一样。
-DFTinker was implemented ...
-
-
-
+DFTinker is implemented as three SmPL files (2,034 LoC in total) and a shell script file (103 LoC) based on the Coccinelle engine version 1.0.4 with Python support. The three SmPL files are used for detecting double-fetch bugs and filtering out non-double-fetch bugs cases. The Coccinelle engine will use these files as pattern rules to find double-fetch bugs. The shell script is used for supervising the Coccinelle engine and sorting out the results of the experiments.
 
 
 \section{Evaluation}%1.5
 \label{evalue}
-This section will discuss DFTinker's ability to detect double fetches and the performance of the operating system fixed by DFTinker.
+This section will discuss DFTinker's ability to detect double-fetch bugs and the performance of the operating system fixed by DFTinker.
 
-The experiment was conducted on a Linux laptop running Ubuntu 16.04 x64, with one Intel i7-7700HQ 2.6GHz processor, 8GB of memory, 250GB SSD. The Coccinelle version was 1.0.4 with Python support. We used Linux 4.14.10, OpenBSD 6.2, FreeBSD 11.1, Android 7.0.0, and Darwin 10.13.3, which were the relatively newer version when the experiment was conducted. To prove that DFTinker can find out bugs reported by prior works, the experiment was also conducted on Linux 4.5, the same version Wang \textit{et al.} used to experiment on.
 
-To evaluate the efficiency of the fixed operating system, another Ubuntu 14.04 x64 was implemented. We chose five vulnerable functions from the detection results and fixed them by DFTinker. By comparing the run time of the invocation of the vulnerable functions before fixing and after fixing, we could get the performance overhead of DFTinker. This operating system ran on a server with a 4-core Intel Core i7-6700 CPU (clocked at 3.40GHz, supporting RTM) with each core possessing a private 32KB L1 cache and a private 256KB L2 cache and a shared 8MB L3 cache. The memory was 32GB and the storage was a 250GB SSD.
-\subsection{Detection of Double-Fetch Bugs}
+\subsection{Detection of Double-fetch Bugs}
 \label{evalue1}
+The experiment was conducted on a Linux laptop running Ubuntu 16.04 x64, with one Intel i7-7700HQ 2.6GHz processor, 8GB of memory, 250GB SSD. We used Linux 4.14.10, OpenBSD 6.2, FreeBSD 11.1, Android 7.0.0 (kernel version 3.18), and Darwin 10.13.3, which were the relatively newer version when the experiment was conducted. To prove that DFTinker can find out bugs reported by prior works, the experiment was also conducted on Linux 4.5, the same version Wang \textit{et al.} used to experiment on.
 
 
-At first, DFTinker was run with the Linux kernel 4.5, the same version Wang \textit{et al.}~\cite{wang}
-used， so as to confirm Wang \textit{et al.}'s work. DFTinker successfully reached Wang \textit{et al.}'s result. All five known double-fetch bugs (CVE-2016-5728, CVE-2016-6130, CVE-2016-6136, CVE-2016-6156, CVE-2016-6480)
-reported in Linux kernel 4.5 were found , which proved that DFTinker has the same effectiveness as Wang
+At first, DFTinker was run with the Linux kernel 4.5, so as to confirm Wang \textit{et al.}'s work. DFTinker successfully reached Wang \textit{et al.}'s result. All five known double-fetch bugs (CVE-2016-5728, CVE-2016-6130, CVE-2016-6136, CVE-2016-6156, CVE-2016-6480)
+reported in Linux kernel 4.5 were found, which proved that DFTinker has the same effectiveness as Wang
 \textit{et al.}'s work in detecting double-fetch bugs.
 
 
-Then DFTinker was applied to five open source kernels: Linux 4.14.10, FreeBSD 11.1, OpenBSD 6.2, Android 7.0.0 (kernel version 3.18) and Darwin 10.13.3. These were the relatively newer version when the experiment was conducted. The statistical result is shown in Table~\ref{stat} and parts
-\footnote{Due to the space limitation, the full results are available at https://github.com/luoyyqq}​ of the detailed results are shown in Table~\ref{result}.
+Then, DFTinker was applied to the five prevalent open source kernels. The statistical result is shown in Table~\ref{stat} and parts
+\footnote{Due to the space limitation of the page, the full results of the double-fetch bugs are available at https://github.com/luoyyqq}​ of the detailed results are shown in Table~\ref{result}.
 
-\textbf{1. Linux.} The Linux kernel used is version 4.14.10 which was released on Dec 29, 2017. In this version, five double-fetch bugs reported by Wang \textit{et al.} had already been fixed, but it still found 24 cases in total.
+\textbf{1. Linux.} The Linux kernel used is version 4.14.10 which was released on Dec 29, 2017. In this version, five double-fetch bugs reported by Wang \textit{et al.} had already been fixed, but DFTinker still found 24 cases in total.
 
 \begin{table*}[htb!]
   \centering
-  \caption{Part of the Results of Double-fetch Bugs}
+  \caption{Part of the Detailed Results of Double-fetch Bugs}
   \begin{tabular}{cccccc}
     \hline
-    No. & File & Function & the First Fetch & the Second Fetch & Type  \\  
+    No. & File & Function & \makecell{Line of the\\First Fetch} & \makecell{Line of the\\Second Fetch}  & Type  \\  
     \hline
     1 & bus.c & \_\_nd\_ioctl & 942 & 1025 & Type-selection \\
 2 & commctrl.c & ioctl\_send\_fib & 82 & 119 & Size-checking \\
@@ -589,6 +583,142 @@ Then DFTinker was applied to five open source kernels: Linux 4.14.10, FreeBSD 11
     \label{result}
   \end{tabular}
 \end{table*}
+
+\textbf{2. FreeBSD.}
+%有几个人不认识FreeBSD？需要费工夫介绍么？下同
+%FreeBSD is an open-source Unix-like operating system, which is the most widely used open-source BSD distribution. 
+The FreeBSD version was 11.1, which was released in July 2017. Note that FreeBSD is a little different from Linux, for FreeBSD uses \verb:copyin(): and \verb:copyin_nofault(): as transfer functions. Thus, it needs to modify corresponding pattern code in DFTinker before the experiment. In FreeBSD, 12 cases were found in total.
+
+
+
+\textbf{3. OpenBSD.}
+%OpenBSD is also an open-source UNIX-like operating system and it is one of the three popular distributions of BSD. 
+The OpenBSD version tested is 6.2, which was released in Oct 2017. In our experiment, DFTinker didn't find any double-fetch bug in OpenBSD. In fact, OpenBSD provides many security features in the system which are optional or unavailable in other operating systems, and developers audit source code for security frequently. This may be the reason why DFTinker can't find any double-fetch bug in OpenBSD.
+
+\textbf{4. Android.}
+Android is a special distribution of Linux. It uses Linux kernel with specific modification. The Android version tested was 7.0.0 based on Linux kernel version 3.18. We found 41 double-fetch bugs in the Android kernel source.
+
+\textbf{5. Darwin.}
+Darwin is a Unix operating system which was open-sourced by Apple Inc. in 2000. In our experiments, we chose Darwin version 10.13.3, which was the latest version when we conducted the experiments. Similar to FreeBSD, Darwin uses \verb:copyin(): and \verb:copyin_nofault(): as transfer functions, so we can directly use FreeBSD version DFTinker. We totally found 4 double-fetch bugs in Darwin.
+
+\subsection{Automated Patching with Intel TSX}
+\label{evalue2}
+
+
+
+
+To evaluate the efficiency of the fixed operating system, another Ubuntu 14.04 x64 was implemented. We chose five vulnerable functions from the detection results and fixed them by DFTinker. By comparing the run time of the invocation of the vulnerable functions before fixing and after fixing, we could get the performance overhead of DFTinker. This operating system ran on a server with a 4-core Intel Core i7-6700 CPU (clocked at 3.40GHz, supporting RTM) with each core possessing a private 32KB L1 cache and a private 256KB L2 cache and a shared 8MB L3 cache. The memory was 32GB and the storage was a 250GB SSD.
+
+
+As Coccinelle engine is accurate in locating lines of double-fetch bugs in the code, it is easy to fix \verb:LOCK(): and \verb:UNLOCK(): operations to the code. According to the feature of transaction memory, all operations between \verb:LOCK(): and \verb:UNLOCK(): will be executed in a transaction, execution results will be committed if there are no conflicts. In other words, if there is a malicious user changes the data in the user space after the first fetch, all operations in the transaction will be aborted and rerun from \verb:LOCK():, which guarantees the consistency of the data. In our experiments, we fixed target functions using DFTinker and modified the data between two fetches using a user thread. The results showed that the data fetched at the second time was same as the first time, which proved that DFTinker was effective in protecting double-fetch bugs.
+
+To evaluate the overhead performance of the fixed code, an Ubuntu 14.04 x64 was used, whose kernel version was 4.6.1. DFTinker was used to fix the functions in the Table~\ref{performance}. Then, a program ran to call the target function for a thousand times and recorded its runtime. At last, it was compared with the runtimes that ran on the operating system not been fixed. After testing for twenty times and taking the average, the fixed operating system owned a decent overhead performance of 1.3~\%. The detailed results were shown in Table~\ref{performance}.
+
+
+\begin{table}[t!]
+\caption{Results of the Performance Tests of the Fixed Code}
+\centering
+\begin{tabular}{ccccc} 
+  \hline
+Vulnerable Functions & Files & \makecell{Origin \\ Runtime (\textmu s)} & \makecell{Fixed \\ Runtime (\textmu s)} & \makecell{Average \\ Overhead} \\
+\hline
+ioctl\_file\_dedupe\_range() & ioctl.c & 556.25 & 563.25 & 1.3\% \\
+ll\_dir\_ioctl() & dir.c & 438.72 & 444.12 & 1.2\% \\
+copy\_dev\_ioctl() & dev-ioctl.c & 659.43 & 668.86 & 1.4\% \\
+\_ctl\_ioctl\_main() & mpt3sas\_ctl.c & 445.12 & 450.11 & 1.1\% \\
+sg\_scsi\_ioctl() & scsi\_ioctl.c & 515.12 & 522.02 & 1.3\% \\
+
+  \hline
+\end{tabular}
+\label{performance}
+\end{table}
+
+\section{Discussion}%1
+\label{discuss}
+
+Double-fetch bugs are significant problems in the operating systems, and they have been found in almost all the modern kernels, such as the Windows, Linux, FreeBSD, and Android~\cite{wang,precise}. Double-fetch bugs have a long history, and some of them existed over 10 years (CVE-2016-6480). Besides, potential double-fetch bugs (currently not buggy) can turn into buggy ones when the code is updated without paying special attention to the double fetch issue, such as CVE-2016-5728 and CVE-2016-6516. Wang \textit{et al.}~\cite{wang} call such situations as benign double-fetch situations and paid special attention to them. Xu \textit{et al.}\cite{precise} regarded such potential bugs as real bugs. Thus, in this paper, we take all the potential double-fetch bug situations into consideration as well to conduct a thorough detection and fix.
+
+We have implemented a tool named DFTinker to automatically detect and fix double-fetch bugs. DFTinker can analyze the whole kernel (including all drivers) in one execution, which has a good code coverage. In addition, DFTinker can detect and fix the bug at the same time, which is efficient. Furthermore, it can prevent the potential double-fetch bug that is undetectable with current approaches, such as the special double-fetch bug (CVE-2015-8550) introduced by the compiler~\cite{wilhelm15tracing}.
+
+Although DFTinker achieves a decent performance in detecting and fixing double-fetch bugs, it relies on the availability of the source code, which is suitable for in-house testing. We will take the binary situations into consideration in the future work. 
+
+%It cannot handle the special case that the double-fetch bug does not reside in the source code but is introduced by the compiler (CVE-2015-8550)~\cite{wilhelm15tracing}. We will include such situations in the future work. 
+
+
+%\begin{itemize}
+%\item DFTinker cannot find out double-fetch bugs with unknown transfer functions. In fact, there are many other functions contains one or more transfer functions, so these functions can be regarded as transfer functions, too. However, it is not easy for a static method to identify whether a function call transfer functions finally or not. This is left for future work.
+%\item DFTinker cannot figure out double-fetch bugs introduced by compilers, like CVE-2015-8550~\cite{wilhelm15tracing}. As DFTinker works on source code level, any double-fetch bug happens in lower level cannot be found. It may be detected by a dynamic approach. Nevertheless, DFTinker can prevent such bugs with our prevention approach based on transactional memory.
+%\end{itemize}
+
+
+
+%我说过两次让你把related work单独做一节，不要放在discussion里！
+\section{Related Work}
+\label{related}
+
+%Both double-fetch bugs and transactional memory are widely studied nowadays.
+
+%\textbf{Double-fetch bugs.} Similar to program analysis, methods used to study double-fetch bugs can be divided into dynamic and static.
+
+Jurczyk and Coldwind~\cite{bochspwn,jurczyk2013identifying} used a dynamic approach in their Bochspwn project to study double-fetch bugs in Windows. By tracing memory accesses, they successfully found double-fetch bugs in the Windows kernel. Wilhelm~\cite{wilhelm15tracing} used an approach similar to the
+Bochspwn project to analyze memory access pattern of para-virtualized
+devices' backend components. His analysis discovered three novel security
+vulnerabilities in security-critical backend components. One of the
+discovered vulnerabilities does not exist in the source code but is
+introduced through compiler optimization.
+Inherently, such dynamic approaches have a low code coverage, i.e., code under strict conditions may never be tested. Furthermore, code that is being tested is limited to the emulation ability, causing double-fetch bugs in hardware devices that it cannot emulate may be missed. Our static approach has a better code coverage and can detect double-fetch bugs in the drivers, where the dynamic approaches are incapable of.
+
+%Prior works have already studied double-fetch bugs in Windows~\cite{hammou2016exploiting,jurczyk2013identifying,bochspwn} and Linux~\cite{wang,Wang2017A,precise,modern} systems. Bochspwn~\cite{bochspwn,hammou2016exploiting} used a dynamic approach to detect double-fetch bugs on Windows. Bochspwn defines a short time frame. Once an access to a user address happened twice in the time frame, it will be sorted as a double-fetch bug. Obviously, Bochspwn owns a low code coverage for code that under strict conditions may be never tested. Furthermore, code that Bochspwn can test is limited to its emulation ability, causing double-fetch bugs in hardware devices that it cannot emulate may be missed.
+
+Wang \textit{et al.}~\cite{wang} is the first to systematically study double-fetch bugs in the Linux kernel. Based on the transfer functions, they use a static pattern-matching approach to detect double-fetch bugs. In addition to the identification of six real double-fetch bugs, they also propose five solutions to prevent double-fetch bugs. However, the accuracy of their detection approach is undesirable and they could not automatically fix the bug after identifying them. % And because of the incomplete model of the double-fetch bug, its accuracy is undesirable and the false alarm rate is quite high.
+Our approach can automatically detect and fix double-fetch bugs at the same time.
+
+%相关工作是简述别人工作后着重说人家不足，你把人家工作写的那么认真那么好，你还做什么？
+Schwarz \textit{et al.}~\cite{modern} proposed a method using cache-attack and kernel-fuzzing techniques to detect, exploit, and eliminate double-fetch bugs in Linux syscalls. %These techniques were efficacious according to the experiment results that the exploitation success rate reached up to 97\%. Schwarz \textit{et al.} also used hardware transactional memory to eliminate double-fetch bugs. They achieved a mechanism named DropIt with a performance overhead of 0.8\%. 
+However, their approach is limited to Linux syscalls, whereas large numbers of the double-fetch bugs occur in non-syscall functions, such as functions in drivers, are missed. Thus, their approach suffers from a low code coverage, whereas our approach is free from that.% for its inherent characteristics.
+
+Xu \textit{et al.}\cite{precise} proposed a formal definition of double-fetch bugs and used a static analysis based on LLVM IR and symbolic execution to detect such bugs. However, their definition takes all the potential situations into consideration, which are not currently buggy but only have the potential to turn into bugs when the code is updated. Besides, their approach needs to compile the source code to LLVM IR and specify the target architecture. Thus, it detects only one architecture at one time, leading to the miss of bugs such as CVE-2016-6130. Our approach has a better code coverage, which can analyze the source code of all the architecture at one time. We also provide automatical fix after the bug is identified, which is efficient than previous works.
+
+%人家的符号执行不是传统的执行，不需要fork分支去执行，所以没有空间爆炸问题。
+%also studied double-fetch bugs in the Linux kernel. They proposed a formal definition of double-fetch bugs and implemented a static analysis system named DEADLINE. Their approach needed to compile the source code to LLVM IR, and checking authenticity with a modified symbolic execution method. However, when the source code was compiled to LLVM IR, it needed to specify the target architecture, thus, the system would detect only one architecture at once, leading to the miss of CVE-2016-6130. And it had common failings of the symbolic execution, such as the path explosion and constraint solving difficulties.
+
+
+
+%In our approach, we used a source-level static analysis method, which could cover all architectures in one process and owned a high code coverage. Besides, our better model led to a higher accuracy and lower false alarm rate.
+
+
+%你研究的是double fetch,不是TM，相关工作需要double fetch的工作，不需要TM！
+%\textbf{Transactional memory.} Transactional memory~\cite{Herlihy1993Transactional,Hammond2004Transactional,Harris2010Transactional}, as an emerging programming paradigm, has attracted great attention. With transactional memory, programmers can easily implement fine-grained operations.
+
+%Most of the time, transactional memory is used as a substitute for the lock mechanism in parallel programming~\cite{Herlihy1993Transactional}, but recently, it has been applied to other fields as well.
+
+%Guan \textit{et al.}~\cite{Guan2015Protecting} used hardware transactional memory to protect private keys in memory, it could deal with information disclosure attacks efficaciously. Jang \textit{et al.}~\cite{Jang2016Breaking} used hardware transactional memory to break kernel address space layout randomization, which is the core mechanism of the preventing systems from memory attacks, such as buffer overflow.
+
+%The transactional memory is successfully applied to the double-fetch bugs protection as well. With its feature, DFTinker can guarantee the consistency of data between two fetches, which can solve double-fetch bugs radically.
+
+
+
+\section{Conclusion}
+\label{conclusion}
+
+This paper proposes an approach to automatically detect and fix double-fetch bugs. We implement a prototype named DFTinker and evaluate it with real kernels. Experiments show that DFTinker is effective and efficient in automatically detecting and fixing double-fetch bugs. DFTinker detected 81 cases in prevalent kernels and the performance overhead of the fixed program is only 1.3\% on average.
+
+%, we implemented a prototype named DFTinker, which could detect double-fetch bugs and fix code automatically. With more transfer functions, DFTinker identified more double-fetch bug situations and owned a higher accuracy. With stricter rules, DFTinker filtered double-fetch bugs where it couldn't result in fatal errors, lowering false alarm rate significantly. In total, DFTinker detected 24 cases in Linux 4.14.10, 12 cases in FreeBSD 11.1, and no case in OpenBSD 6.2 and Android 7.0.0. Finally, DFTinker used hardware transactional memory to prevent double-fetch bugs, which is efficacious and with a performance overhead of only 1.3\%.
+
+% \section*{Acknowledgment}
+
+
+% The authors would like to thank...
+
+% \ifCLASSOPTIONcaptionsoff
+%   \newpage
+% \fi
+
+\bibliography{journal}
+\bibliographystyle{abbrv}
+
+\end{document}
+
 
 
 % \begin{table*}[htb!]
@@ -622,7 +752,7 @@ Then DFTinker was applied to five open source kernels: Linux 4.14.10, FreeBSD 11
 % 22 & vhost.c & vhost\_vring\_ioctl & 1361 & 1379 & Validity-checking \\
 % 23 & vt.c & con\_font\_set & 4135 & 4152 & Reacquisition \\
 % 24 & wext-core.c & ioctl\_standard\_iw\_point & 747 & 809 & Reacquisition \\
-% 	\hline
+%   \hline
 % 25 & aac.c  & aac\_ioctl\_sendfib() & 2999 & 3007 & Size-checking \\
 % 26 & aacraid.c  & aac\_ioctl\_sendfib() & 2763 & 2771 & Size-checking \\
 % 27 & bcm2835\_vcio.c  & vcio\_ioctl() & 66 & 72 & Size-checking \\
@@ -635,7 +765,7 @@ Then DFTinker was applied to five open source kernels: Linux 4.14.10, FreeBSD 11
 % 34 & netmap\_pt.c  & ptnetmap\_read\_cfg() & 779 & 790 & Size-checking \\
 % 35 & oce\_if.c  & oce\_handle\_passthrough() & 2293 & 2305 & Size-checking \\
 % 36 & sys\_capability.c  & sys\_cap\_rights\_limit() & 259 & 267 & Validity-checking \\
-% 	\hline
+%   \hline
 % 37 & af\_decnet.c & \_\_dn\_getsockopt & 1525 & 1582 & Reacquisition \\
 % 38 & mpt2sas\_ctl.c & \_ctl\_ioctl\_main & 2158 & 2196 & Validity-checking \\
 % 39 & dpt\_i2o.c & adpt\_i2o\_passthru & 1750 & 1855 & Reacquisition \\
@@ -677,146 +807,13 @@ Then DFTinker was applied to five open source kernels: Linux 4.14.10, FreeBSD 11
 % 75 & vhost.c & vhost\_vring\_ioctl & 620 & 638 & Validity-checking \\
 % 76 & wl\_priv.c & wvlan\_uil\_put\_info & 606 & 639 & Type-selection \\
 % 77 & yam.c & yam\_ioctl & 956 & 979 & Type-selection \\
-% 	\hline
+%   \hline
 % 78 & ucode.c & copyin\_update & 92 & 117 & Size-checking \\
 % 79 & dtrace.c & dtrace\_dof\_copyin & 11602 & 11626 & Size-checking \\
 % 80 & nfs\_vfsops.c & nfs\_vfs\_mount & 1834 & 1872 & Type-selection \\
 % 81 & nfs\_syscalls.c & fhopen & 620 & 626 & Size-checking \\
-% 	\hline
+%   \hline
 
 %     \label{result}
 %   \end{tabular}
 % \end{table*}
-
-
-\textbf{2. FreeBSD.}
-%有几个人不认识FreeBSD？需要费工夫介绍么？下同
-%FreeBSD is an open-source Unix-like operating system, which is the most widely used open-source BSD distribution. 
-The FreeBSD version was 11.1, which was released in July 2017. Note that FreeBSD is a little different from Linux, for FreeBSD uses \verb:copyin(): and \verb:copyin_nofault(): as transfer functions. Thus it needs to modify corresponding pattern code in DFTinker before the experiment. In FreeBSD, 12 cases were found in total.
-
-
-
-\textbf{3. OpenBSD.}
-%OpenBSD is also an open-source UNIX-like operating system and it is one of the three popular distributions of BSD. 
-The OpenBSD version tested is 6.2, which was released in Oct 2017. In our experiment, DFTinker didn't find any double-fetch bug in OpenBSD. In fact, OpenBSD provides many security features in the system which are optional or unavailable in other operating systems, and developers audit source code for security frequently. This may be the reason why DFTinker can't find any double-fetch bug in OpenBSD.
-
-\textbf{4. Android.}
-Android is a special distribution of Linux. It uses Linux kernel with specific modification. The Android version tested was 7.0.0 based on Linux kernel version 3.18. We found 41 double-fetch bugs in the Android kernel source.
-
-\textbf{5. Darwin.}
-Darwin is a Unix operating system which is open-sourced by Apple Inc. in 2000. In our experiments, we chose Darwin version 10.13.3, which is the newest version when we conducted the experiments. We totally found 4 double-fetch bugs in Darwin.
-
-\subsection{Automated Patching with Intel TSX}
-\label{evalue2}
-
-
-
-\begin{table}[t!]
-\caption{Results of the Performance Tests of the Fixed Code}
-\centering
-\begin{tabular}{ccccc} 
-  \hline
-Vulnerable Functions & Files & \makecell{Origin \\ Runtime (\textmu s)} & \makecell{Fixed \\ Runtime (\textmu s)} & \makecell{Average \\ Overhead} \\
-\hline
-ioctl\_file\_dedupe\_range() & ioctl.c & 556.25 & 563.25 & 1.3\% \\
-ll\_dir\_ioctl() & dir.c & 438.72 & 444.12 & 1.2\% \\
-copy\_dev\_ioctl() & dev-ioctl.c & 659.43 & 668.86 & 1.4\% \\
-\_ctl\_ioctl\_main() & mpt3sas\_ctl.c & 445.12 & 450.11 & 1.1\% \\
-sg\_scsi\_ioctl() & scsi\_ioctl.c & 515.12 & 522.02 & 1.3\% \\
-
-  \hline
-\end{tabular}
-\label{performance}
-\end{table}
-
-As Coccinelle engine is accurate in locating lines of double-fetch bugs in the code, it is easy to fix \verb:LOCK(): and \verb:UNLOCK(): operations to the code. According to the feature of transaction memory, all operations between \verb:LOCK(): and \verb:UNLOCK(): will be executed in a transaction, execution results will be committed if there are no conflicts. In other words, if there is a malicious user changes the data in the user space after the first fetch, all operations in the transaction will be aborted and rerun from \verb:LOCK():, which guarantees the consistency of the data. In our experiments, we fixed target functions using DFTinker and modified the data between two fetches using a user thread. The results showed that the data fetched at the second time was same as the first time, which proved that DFTinker was effective in protecting double-fetch bugs.
-
-To evaluate the overhead performance of the fixed code, an Ubuntu 14.04 x64 was used, whose kernel version was 4.6.1. DFTinker was used to fix the functions in the Table~\ref{performance}. Then, a program ran to call the target function for a thousand times and recorded its runtime. At last, it was compared with the runtimes that ran on the operating system not been fixed. After testing for twenty times and taking the average, the fixed operating system owned a decent overhead performance of 1.3~\%. The detailed results were shown in Table~\ref{performance}.
-
-\section{Discussion}%1
-\label{discuss}
-
-Double-fetch bugs are significant problems in the operating systems, and they have been found in almost all the modern kernels, such as the Windows, Linux, FreeBSD, and Android~\cite{wang,precise}. Double-fetch bugs have a long history, and some of them existed over 10 years (CVE-2016-6480). Besides, potential double-fetch bugs (currently not buggy) can turn into buggy ones when the code is updated without paying special attention to the double fetch issue, such as CVE-2016-5728 and CVE-2016-6516. Wang \textit{et al.}~\cite{wang} call such situations as benigh double-fetch situations and paid special attention to them. Xu \textit{et al.}\cite{precise} regarded such potential bugs as real bugs. Thus, in this paper, we take all the potential double-fetch bug situations into consideration as well to conduct a thorough detection and fix.
-
-We have implemented a tool named DFTinker to automatically detect and fix double-fetch bugs. DFTinker can analyze the whole kernel (including all drivers) in one execution, which has a good code coverage. In addition, DFTinker can detect and fix the bug at the same time, which is efficient. Furthermore, it can prevent potential double-fetch bug that is undetectable with current approach, such as the special double-fetch bug (CVE-2015-8550) introduced by the compiler~\cite{wilhelm15tracing}.  
-
-Although DFTinker achieves a decent performance in detecting and fixing double-fetch bugs, it relies on the availability of the source code, which is suitable for in-house testing. We will take the binary situations into consideration in the future work. 
-
-%It cannot handle the special case that the double-fetch bug does not reside in the source code but is introduced by the compiler (CVE-2015-8550)~\cite{wilhelm15tracing}. We will include such situations in the future work. 
-
-
-%\begin{itemize}
-%\item DFTinker cannot find out double-fetch bugs with unknown transfer functions. In fact, there are many normal functions contains one or more transfer functions, so these normal functions can be regarded as transfer functions, too. However, it is not easy for a static method to identify whether a function call transfer functions finally or not. This is left for future work.
-%\item DFTinker cannot figure out double-fetch bugs introduced by compilers, like CVE-2015-8550~\cite{wilhelm15tracing}. As DFTinker works on source code level, any double-fetch bug happens in lower level cannot be found. It may be detected by a dynamic approach. Nevertheless, DFTinker can prevent such bugs with our prevention approach based on transactional memory.
-%\end{itemize}
-
-
-
-%我说过两次让你把related work单独做一节，不要放在discussion里！
-\section{Related Work}
-\label{related}
-
-%Both double-fetch bugs and transactional memory are widely studied nowadays.
-
-%\textbf{Double-fetch bugs.} Similar to program analysis, methods used to study double-fetch bugs can be divided into dynamic and static.
-
-Jurczyk and Coldwind~\cite{bochspwn,jurczyk2013identifying} used a dynamic approach in their Bochspwn project to study double-fetch bugs in Windows. By tracing memory accesses, they successfully found double-fetch bugs in the Windows kernel. Wilhelm~\cite{wilhelm15tracing} used an approach similar to the
-Bochspwn project to analyze memory access pattern of para-virtualized
-devices' backend components. His analysis discovered three novel security
-vulnerabilities in security-critical backend components. One of the
-discovered vulnerabilities does not exist in the source code but is
-introduced through compiler optimization.
-Inherently, such dynamic approaches have a low code coverage, i.e., code under strict conditions may never be tested. Furthermore, code that is being tested is limited to the emulation ability, thus double-fetch bugs in hardware devices that it cannot emulate may be missed. Our static approach has a better code coverage and can detect double-fetch bugs in the drivers, where the dynamic approaches are incapable of.
-
-%Prior works have already studied double-fetch bugs in Windows~\cite{hammou2016exploiting,jurczyk2013identifying,bochspwn} and Linux~\cite{wang,Wang2017A,precise,modern} systems. Bochspwn~\cite{bochspwn,hammou2016exploiting} used a dynamic approach to detect double-fetch bugs on Windows. Bochspwn defines a short time frame. Once an access to a user address happened twice in the time frame, it will be sorted as a double-fetch bug. Obviously, Bochspwn owns a low code coverage for code that under strict conditions may be never tested. Furthermore, code that Bochspwn can test is limited to its emulation ability, thus double-fetch bugs in hardware devices that it cannot emulate may be missed.
-
-Wang \textit{et al.}~\cite{wang} is the first to systematically study double-fetch bugs in the Linux kernel. Based on the transfer functions, they use a static pattern-matching approach to detect double-fetch bugs. In addition to the identification of six real double-fetch bugs, they also propose five solutions to prevent double-fetch bugs. However, the accuracy of their detection approach is undesirable and they could not automatically fix the bug after identifying them. % And because of the incomplete model of the double-fetch bug, its accuracy is undesirable and the false alarm rate is quite high.
-Our approach can automatically detect and fix double-fetch bugs at the same time.
-
-%相关工作是简述别人工作后着重说人家不足，你把人家工作写的那么认真那么好，你还做什么？
-Schwarz \textit{et al.}~\cite{modern} proposed a method using cache-attack and kernel-fuzzing techniques to detect, exploit, and eliminate double-fetch bugs in Linux syscalls. %These techniques were efficacious according to the experiment results that the exploitation success rate reached up to 97\%. Schwarz \textit{et al.} also used hardware transactional memory to eliminate double-fetch bugs. They achieved a mechanism named DropIt with a performance overhead of 0.8\%. 
-However, their approach is limited to Linux syscalls, whereas large numbers of the double-fetch bugs occur in non-syscall functions, such as functions in drivers, are missed. Thus, their approach suffers from a low code coverage, whereas our approach is free from that.% for its inherent characteristics.
-
-Xu \textit{et al.}\cite{precise} proposed a formal definition of double-fetch bugs and used a static analysis based on LLVM IR and symbolic execution to detect such bugs. However, their definition takes all the potential situations into consideration, which are not currently buggy but only have the potential to turn into bugs when the code is updated. Besides, their approach needs to compile the source code to LLVM IR and specify the target architecture, thus, it detects only one architecture at one time, leading to the miss of bugs such as CVE-2016-6130. Our approach has a better code coverage, which can analyze the source code of all the architecture at one time. We also provide automatical fix after the bug is identified, which is efficient than previous works.
-
-%人家的符号执行不是传统的执行，不需要fork分支去执行，所以没有空间爆炸问题。
-%also studied double-fetch bugs in the Linux kernel. They proposed a formal definition of double-fetch bugs and implemented a static analysis system named DEADLINE. Their approach needed to compile the source code to LLVM IR, and checking authenticity with a modified symbolic execution method. However, when the source code was compiled to LLVM IR, it needed to specify the target architecture, thus the system would detect only one architecture at once, leading to the miss of CVE-2016-6130. And it had common failings of the symbolic execution, such as the path explosion and constraint solving difficulties.
-
-
-
-%In our approach, we used a source-level static analysis method, which could cover all architectures in one process and owned a high code coverage. Besides, our better model led to a higher accuracy and lower false alarm rate.
-
-
-%你研究的是double fetch,不是TM，相关工作需要double fetch的工作，不需要TM！
-%\textbf{Transactional memory.} Transactional memory~\cite{Herlihy1993Transactional,Hammond2004Transactional,Harris2010Transactional}, as an emerging programming paradigm, has attracted great attention. With transactional memory, programmers can easily implement fine-grained operations.
-
-%Most of the time, transactional memory is used as a substitute for the lock mechanism in parallel programming~\cite{Herlihy1993Transactional}, but recently, it has been applied to other fields as well.
-
-%Guan \textit{et al.}~\cite{Guan2015Protecting} used hardware transactional memory to protect private keys in memory, it could deal with information disclosure attacks efficaciously. Jang \textit{et al.}~\cite{Jang2016Breaking} used hardware transactional memory to break kernel address space layout randomization, which is the core mechanism of the preventing systems from memory attacks, such as buffer overflow.
-
-%The transactional memory is successfully applied to the double-fetch bugs protection as well. With its feature, DFTinker can guarantee the consistency of data between two fetches, which can solve double-fetch bugs radically.
-
-
-
-\section{Conclusion}
-\label{conclusion}
-
-This paper proposes an approach to automatically detect and fix double-fetch bugs. We implement a prototype named DFTinker and evaluate it with real kernels. Experiments show that DFTinker is effective and efficient in automatically detecting and fixing double-fetch bugs. DFTinker detected 81 cases in prevalent kernels and the performance overhead of the fixed program is only 1.3\% on average.
-
-%, we implemented a prototype named DFTinker, which could detect double-fetch bugs and fix code automatically. With more transfer functions, DFTinker identified more double-fetch bug situations and owned a higher accuracy. With stricter rules, DFTinker filtered double-fetch bugs where it couldn't result in fatal errors, lowering false alarm rate significantly. In total, DFTinker detected 24 cases in Linux 4.14.10, 12 cases in FreeBSD 11.1, and no case in OpenBSD 6.2 and Android 7.0.0. Finally, DFTinker used hardware transactional memory to prevent double-fetch bugs, which is efficacious and with a performance overhead of only 1.3\%.
-
-% \section*{Acknowledgment}
-
-
-% The authors would like to thank...
-
-% \ifCLASSOPTIONcaptionsoff
-%   \newpage
-% \fi
-
-\bibliography{journal}
-\bibliographystyle{abbrv}
-
-\end{document}
-
-

@@ -151,8 +151,8 @@ The approach can cover all architectures in one detect execution, need no manual
 \end{itemize}
 The rest of paper is organized as follows. Section~\ref{back} introduces background about double-fetch bugs, the Coccinelle engine, and Intel TSX. Section~\ref{design} presents the design details of our approach. %, i.e., how to improve the pattern that Wang \textit{et al.} used and how to fix code with Intel TSX technology. 
 Section~\ref{imple} shows the implementation of DFTinker. % and the evaluation environment. 
-Section~\ref{evalue} presents the evaluation of DFTinker.%, including comparison with prior works, and the performance of the fixed operating system. 
-Section~\ref{discuss} discusses this work, followed by the related work in Section~\ref{related}.The conclusion is in Section~\ref{conclusion}.
+Section~\ref{evalue} presents the evaluation of DFTinker. %, including comparison with prior works, and the performance of the fixed operating system. 
+Section~\ref{discuss} discusses this work, followed by the related work in Section~\ref{related}. The conclusion is in Section~\ref{conclusion}.
 
 \section{Background}%2
 \label{back}
@@ -161,7 +161,7 @@ Section~\ref{discuss} discusses this work, followed by the related work in Secti
 
 \subsection{The Double-fetch Bug}
 \label{back1}
-In modern operating systems, kernel space is always separated from user space for safety~\cite{swift2003improving}. Kernel code run in kernel space and if there is a need to get data from users, it will use specific functions, termed \emph{transfer functions}. In Linux kernel, there are four typical transfer functions, \verb:get_user():, \verb:put_user():, \verb:copy_from_user():, \verb:copy_to_user():. All their effects are fetching data or transferring data between the kernel space and the user space. However, there are many cases where kernel fetches data from the same user address twice or more times. The first time kernel fetches data from the user space, it may check whether the data is legal or not. If it is a legal data, the kernel will conduct the second fetch to get the whole data into the kernel. Malicious changes between two fetches may cause kernel get unexpected data at second fetch, leading to system crashes or even worse results.
+In modern operating systems, the kernel space is always separated from the user space for safety~\cite{swift2003improving}. Kernel code run in the kernel space and if there is a need to get data from users, it will use specific functions, termed \emph{transfer functions}. In Linux kernel, there are four typical transfer functions, \verb:get_user():, \verb:put_user():, \verb:copy_from_user():, \verb:copy_to_user():. All their effects are fetching data or transferring data between the kernel space and the user space. However, there are many cases where kernel fetches data from the same user address twice or more times. The first time kernel fetches data from the user space, it may check whether the data is legal or not. If it is a legal data, the kernel will conduct the second fetch to get the whole data into the kernel. Malicious changes between two fetches may cause kernel get unexpected data at second fetch, leading to system crashes or even worse results.
 
 
 %代码图中没用的内容太多。折叠的行没有展开，我当时折叠行是因为双栏页面空间不够，分成了两行，你单栏的为什么不展开？
@@ -196,18 +196,18 @@ In modern operating systems, kernel space is always separated from user space fo
 \end{figure}
 
 %unexpected results？？？有源码，会造成内核信息泄露！
-Fig.\ref{df-6130} shows CVE-2016-6130, a Linux kernel double-fetch bug in the file \verb:/drivers/s390/char/sclp_ctl.c:. In this case, the first fetch occurs in line 68, it copies the data pointed by \verb:ctl_sccb.sccb: from user space to the kernel space. Then, it checks the validity of \verb:sccb->length: at line 72. Finally, it fetches the data again with the checked parameter \verb:sccb->length: at line 74. Thus, when \verb:sccb->length: is changed to a very large value between the two fetches, kernel information can be leaked to the user space at line 81.
+Fig.\ref{df-6130} shows CVE-2016-6130, a Linux kernel double-fetch bug in the file \verb:/drivers/s390/char/sclp_ctl.c:. In this case, the first fetch occurs in line 68, it copies the data pointed by \verb:ctl_sccb.sccb: from the user space to the kernel space. Then, it checks the validity of \verb:sccb->length: at line 72. Finally, it fetches the data again with the checked parameter \verb:sccb->length: at line 74. Thus, when \verb:sccb->length: is changed to a very large value between the two fetches, kernel information can be leaked to the user space at line 81.
 
 Wang \textit{et al.}~\cite{wang} summarized three scenarios of double-fetch bugs in his paper. They are as follows:
 
 \textbf{Type Selection.}
-Type selection is the scenario where the data that kernel fetches the first time from user space is a message header, and it is used to identify the message type, thus, the kernel can handle different types of messages. According to prior work, it's common in Linux drivers to use a \verb:switch: statement to handle multiple types of messages in one function. If the messages were changed maliciously after the first fetch, it may cause the kernel handle with the unexpected data, which would result in buffer overflow or even worse situations.
+Type selection is the scenario where the data that kernel fetches the first time from the user space is a message header, and it is used to identify the message type, thus, the kernel can handle different types of messages. According to prior work, it's common in Linux drivers to use a \verb:switch: statement to handle multiple types of messages in one function. If the messages were changed maliciously after the first fetch, it may cause the kernel handle with the unexpected data, which would result in buffer overflow or even worse situations.
 
 \textbf{Size Checking.}
 Size checking is the scenario where the kernel fetches the messages' length at the first fetch, after checking the validity of the length and allocating the right space for the message, the kernel gets the message to the kernel space at the second fetch. This scenario is also vulnerable. Once the message length is replaced by a larger value, a buffer overflow may occur, for a larger string copying into a limited space. CVE-2016-5728, CVE-2016-6130, CVE-2016-6156, CVE-2016-6480, CVE-2015-1420 all belong to this scenario.
 
 \textbf{Shallow Copy.}
-The last scenario is shallow copy where the data copied from user space to kernel space contains a pointer to another buffer in user space. In this scene, the second buffer in user space needs another transfer function, i.e., the second fetch. Fortunately, this kind of double fetches may not harm for each fetch transferring data from different space.
+The last scenario is shallow copy where the data copied from the user space to  the kernel space contains a pointer to another buffer in the user space. In this scene, the second buffer in the user space needs another transfer function, i.e., the second fetch. Fortunately, this kind of double fetches may not harm for each fetch transferring data from different space.
 
 However, these three types cannot cover all double-fetch bugs and own a high false alarm rate, we propose a better model in section~\ref{design1}.
 
@@ -243,9 +243,11 @@ and each fetch indicates an invocation of a transfer function. However, since th
 complex situations in the kernel code, such as pointer change and aliasing, double-fetch bug 
 detection needs further and thorough analysis.
 
+
 %it may also not be a double-fetch bug if there are two transfer functions. It has to meet the condition that the double fetches get the data from the same user address at least. Since there are many complex situations in kernel code, such as assignment and pointer, it needs further and thorough analysis.
 
 Wang \textit{et al.} focues four transfer functions (\verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():) to detect double-fetch bugs, whose functionality is transferring data from user space to kernel space. Besides, he proposed six rules to improve precision and find corner cases, as Fig.\ref{Cocci} shows, which are listed as follows:
+
 
 \begin{figure}
   \centering
@@ -274,9 +276,11 @@ Pointer type conversion is a situation that the pointer is converted to a messag
 Another complex situation is that the user addresses fetched twice are not exactly the same. For example, at the first fetch, the kernel fetches a data member of a struct such as \verb:ptr->length:, and then, after checking validity or preparation, the kernel fetches the whole struct using \verb:ptr: at the second fetch.
 
 \textbf{Rule 5: Loop involvement.}
+
 The last rule is about loop operations. Since the Coccinelle engine is path-sensitive, 
 a loop will be expanded multiple times, i.e., each transfer function will be scanned 
 more than one time. Thus, a transfer function at the end of a loop will match with a transfer function at the beginning of the next loop as a double fetch, which should be excluded as the pointer has changed when.
+
 
 
 
@@ -349,11 +353,13 @@ regarded as a transfer function in this case. We improve the rules as follows.
 \label{transfer-func}
 \end{table}
 
+
 \textbf{Add more transfer functions.} Wang \textit{et al.} used only four transfer functions in his experiment, \verb:get_user():, \verb:__get_user():, \verb:copy_from_user():, and \verb:__copy_from_user():. However, there are also many normal functions containing transfer functions, and their targets are transferring data from user space to kernel space as well, such as \verb:memdup_user(): mentioned above. In addition to funcions, there are also many macros playing the same role in the kernel, like \verb:__copy_from_user_inatomic():.
 In the double-fetch bugs detection scenario, these normal functions and macros can be regarded as transfer functions as well. Table~\ref{transfer-func} shows 15 normal functions (and macros) we include to detect double-fetch bugs.% detection and their types and parameters. Except for functions used, there are still many functions in kernel meet the condition that transferring data from user space to kernel space, however, many of them have not been used in the code. So these functions are abandoned and lifted efficiency.
 
+
 \textbf{Fix incomplete rules.}
-Rules which Wang \textit{et al.} proposed are theoretically correct. However, in the implementation phase, they were achieved incompletely, which leaded false negatives. For instance, in \verb:/fs/nfsd/nfs4recover.c:, as shown in Fig.\ref{fix}, the first fetch happens at line 730, fetching the data pointed by \verb:&cmsg->cm_xid:, the second fetch happens at line 753, fetching the data pointed by \verb:src:, and there is no assignment or statement between two fetches. According to Rule 2 in section~\ref{design1}, this is not a double-fetch bug. But in fact, this is indeed a double-fetch bug for its assignment happens at line 717, thus \verb:cmsg: and \verb:src: point to the same user address actually. This case is missed because of careless implementation. We fixed the rule and reduced the false negative rate.
+Rules which Wang \textit{et al.} proposed are theoretically correct. However, in the implementation phase, they were achieved incompletely, which leaded false negatives. For instance, in \verb:/fs/nfsd/nfs4recover.c:, as shown in Fig.\ref{fix}, the first fetch happens at line 730, fetching the data pointed by \verb:&cmsg->cm_xid:, the second fetch happens at line 753, fetching the data pointed by \verb:src:, and there is no assignment or statement between two fetches. According to Rule 2 in section~\ref{design1}, this is not a double-fetch bug. But in fact, this is indeed a double-fetch bug for its assignment happens at line 717, thus \verb:cmsg: and \verb:src: point to the same user address actually. This case is missed because of careless implementation. We fixed this kind of rules and reduced the false negative rate.
 
 \begin{figure}[t]
   \centering
@@ -421,8 +427,8 @@ As shown in Fig.\ref{return}, there are two fetches at line 850 and 879, and the
 \end{figure}
 
 %\drivers\isdn\hysdn\hysdn_procconf.c
-\textbf{2. Two fetches are in the different branches}
-Another situation is when the two fetches are in the different branches, just like a \verb:SWITCH: statement. For instance, function \verb:hysdn_conf_write: in \verb:\drivers\isdn\hysdn\hysdn_procconf.c: is matched with double-fetch bugs detection. But its two fetches are located in different branches, the first fetch is in the \verb:IF: statement with condition \texttt{cnf->state == CONF\_STATE\_DETECT} and the second fetch is in the \verb:IF: statement with condition \verb:cnf->state == CONF_STATE_POF:. These two conditions can never be satisfied at the same time, so this situation is also a non-double-fetch bug situation.
+\textbf{2. Two fetches are in the different branches.}
+Another situation is when the two fetches are in the different branches, just like a \verb:SWITCH: statement. For instance, function \verb:hysdn_conf_write: in \verb:\drivers\isdn\hysdn\hysdn_procconf.c: is matched with double-fetch bugs detection. But its two fetches are located in the different branches, the first fetch is in the \verb:IF: statement with condition \texttt{cnf->state == CONF\_STATE\_DETECT} and the second fetch is in the \verb:IF: statement with condition \texttt{cnf->state == CONF\_STATE\_POF}. These two conditions can never be satisfied at the same time, so this situation is also a non-double-fetch bug situation.
 
 Besides, based on the improvement mentioned above, we summed up the other two types of double-fetch bugs. They are as follows:
 
@@ -523,8 +529,11 @@ more thorough and powerful fallback path could be established through scanning t
 
 \section{Implementation}%0.5
 \label{imple}
+
 %实现是讲你基于什么语言，代码量，什么框架、工具版本等细信息。你下面说的机器信息是实验环境，不一样。
 DFTinker was implemented ...
+
+
 
 
 
@@ -720,9 +729,9 @@ sg\_scsi\_ioctl() & scsi\_ioctl.c & 515.12 & 522.02 & 1.3\% \\
 \label{performance}
 \end{table}
 
-As Coccinelle engine is accurate in locating lines of double-fetch bugs in the code, it is easy to fix \verb:LOCK(): and \verb:UNLOCK: operations to the code. According to the feature of transaction memory, all operations between \verb:LOCK(): and \verb:UNLOCK(): will be executed in a transaction, execution results will be committed if there are no conflicts. In other words, if there is a malicious user changes the data in the user space after the first fetch, all operations in the transaction will be aborted and rerun from \verb:LOCK():, which guarantees the consistency of the data. In our experiments, we fixed target functions using DFTinker and modified the data between two fetches. The results showed that the data fetched at the second time was same as the first time, which proved that DFTinker was effective in protecting double-fetch bugs.
+As Coccinelle engine is accurate in locating lines of double-fetch bugs in the code, it is easy to fix \verb:LOCK(): and \verb:UNLOCK(): operations to the code. According to the feature of transaction memory, all operations between \verb:LOCK(): and \verb:UNLOCK(): will be executed in a transaction, execution results will be committed if there are no conflicts. In other words, if there is a malicious user changes the data in the user space after the first fetch, all operations in the transaction will be aborted and rerun from \verb:LOCK():, which guarantees the consistency of the data. In our experiments, we fixed target functions using DFTinker and modified the data between two fetches using a user thread. The results showed that the data fetched at the second time was same as the first time, which proved that DFTinker was effective in protecting double-fetch bugs.
 
-To evaluate the overhead performance of the fixed code, an Ubuntu 14.04 x64 was used, whose kernel version was 4.6.1. DFTinker was used to fix the functions in the Table~\ref{performance}. Then, a program ran to call the target function for a thousand times and recorded its runtime. At last, it was compared the run time that ran on the operating system not been fixed. After testing for twenty times and taking the average, the fixed operating system owned a decent overhead performance of 1.3~\%. The detailed results were shown in Table~\ref{performance}.
+To evaluate the overhead performance of the fixed code, an Ubuntu 14.04 x64 was used, whose kernel version was 4.6.1. DFTinker was used to fix the functions in the Table~\ref{performance}. Then, a program ran to call the target function for a thousand times and recorded its runtime. At last, it was compared with the runtimes that ran on the operating system not been fixed. After testing for twenty times and taking the average, the fixed operating system owned a decent overhead performance of 1.3~\%. The detailed results were shown in Table~\ref{performance}.
 
 \section{Discussion}%1
 \label{discuss}
